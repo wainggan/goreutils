@@ -1,3 +1,8 @@
+/*
+todo:
+better argument parsing
+how the hell do you handle errors in rust
+*/
 
 use std::{collections::BTreeMap, env, fs, io::ErrorKind, os::unix::fs::FileExt, path::Path};
 
