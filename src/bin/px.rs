@@ -6,8 +6,6 @@ how the hell do you handle errors in rust
 
 use std::{collections::BTreeMap, env, fs, io::ErrorKind, os::unix::fs::FileExt, path::Path};
 
-use rand::{rngs::ThreadRng, Rng};
-
 #[derive(Debug)]
 enum ConfigMode {
 	Random,
@@ -42,7 +40,7 @@ enum ConfigValid {
 }
 
 
-fn poke(rng: &mut ThreadRng, path: &Path, config: &Config) {
+fn poke(rng: &mut goreutils::rng::XorShift64, path: &Path, config: &Config) {
 	let file = fs::File::options().read(true).write(true).open(path);
 	let file = match file {
 		Ok(x) => x,
@@ -76,8 +74,8 @@ fn poke(rng: &mut ThreadRng, path: &Path, config: &Config) {
 
 	match config.mode {
 		ConfigMode::Random => {
-			let offset = rng.random_range(0..len);
-			let data = rng.random_range(0..255u8);
+			let offset = (rng.next() * len as f64) as u64;
+			let data = (rng.next() * 256.0) as u8;
 
 			match file.write_at(&[data], offset) {
 				Ok(_) => (),
@@ -90,8 +88,8 @@ fn poke(rng: &mut ThreadRng, path: &Path, config: &Config) {
 			}
 		},
 		ConfigMode::Swap => {
-			let offset_0 = rng.random_range(0..len);
-			let offset_1 = rng.random_range(0..len);
+			let offset_0 = (rng.next() * len as f64) as u64;
+			let offset_1 = (rng.next() * len as f64) as u64;
 
 			let mut scratch = [0];
 
@@ -137,7 +135,7 @@ fn poke(rng: &mut ThreadRng, path: &Path, config: &Config) {
 			}
 		},
 		ConfigMode::Shuffle => {
-			let offset = rng.random_range(0..len);
+			let offset = (rng.next() * len as f64) as u64;
 
 			let mut scratch = [0];
 
@@ -264,7 +262,8 @@ fn main() {
 		return;
 	}
 
-	let mut rng = rand::rng();
+	let mut rng = goreutils::rng::XorShift64::new_entropy()
+		.unwrap_or_else(|| goreutils::rng::XorShift64::new_time());
 
 
 	if config.paths.len() == 0 {
