@@ -1,10 +1,10 @@
 /*
 todo:
-better argument parsing
+remove String arg parsing
 how the hell do you handle errors in rust
 */
 
-use std::{env, fs, io::ErrorKind, os::unix::fs::FileExt, path::Path, usize};
+use std::{fs, io::ErrorKind, os::unix::fs::FileExt, path::Path, usize};
 use goreutils::args;
 
 #[derive(Debug)]
@@ -187,7 +187,7 @@ fn util_gen_time() -> u64 {
 		.wrapping_pow(5) as u64
 }
 
-const DEF: &[args::Rule<Config>] = &[
+const RULES: &[args::Rule<Config>] = &[
 	("help", None, 0, &|c, _, _| {
 		c.help = true;
 		Ok(())
@@ -259,23 +259,12 @@ sublicense or whatever they want with this software but at their OWN RISK
 
 fn main() {
 
-	let args = env::args_os()
-		.filter_map(|s| s.into_string().ok())
-		.collect::<Vec<_>>();
-	let mut args_iter = args.iter().map(|x| x.as_str());
-	args_iter.next();
+	let out = args::quick(RULES);
 
-	let mut err = String::new();	
-	let config = args::construct(
-		args::Parse::new(args_iter),
-		DEF,
-		&mut err
-	);
-
-	let (config, mut paths) = match config {
+	let (config, mut paths) = match out {
 		Ok(x) => x,
-		Err(_) => {
-			eprintln!("px: {}", err);
+		Err(e) => {
+			eprintln!("px: {}", e);
 			eprintln!("Try 'px --help' for more information.");
 			return;
 		},
@@ -294,7 +283,7 @@ fn main() {
 
 
 	if paths.len() == 0 {
-		paths.push(".");
+		paths.push(".".to_string());
 	}
 
 	for string in &paths {
