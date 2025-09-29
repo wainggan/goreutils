@@ -27,13 +27,13 @@ const RULES: &[args::Rule<Config>] = &[
 
 const HELP: &str = "\
 Usage: seg [OPTION]...
-Create a segmentation fault.
+Create a smegmentation fault.
       --help        display this help and exit
       --version     display version information and exit
 ";
 
 const VERSION: &str = "\
-seg (goreutils) 0.1
+seg (goreutils) 0.2
 Copyright (C) 2025 Everyone, except Author.
 License GLWT
 Everyone is permitted to copy, distribute, modify, merge, sell, publish,
