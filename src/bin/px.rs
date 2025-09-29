@@ -187,7 +187,7 @@ fn util_gen_time() -> u64 {
 		.wrapping_pow(5) as u64
 }
 
-const DEF: &[args::Parameter<Config>] = &[
+const DEF: &[args::Rule<Config>] = &[
 	("help", None, 0, &|c, _, _| {
 		c.help = true;
 		Ok(())
@@ -259,10 +259,20 @@ sublicense or whatever they want with this software but at their OWN RISK
 
 fn main() {
 
-	let mut err = String::new();	
-	let config = args::parse(DEF, env::args_os().filter_map(|s| s.into_string().ok()), &mut err);
+	let args = env::args_os()
+		.filter_map(|s| s.into_string().ok())
+		.collect::<Vec<_>>();
+	let mut args_iter = args.iter().map(|x| x.as_str());
+	args_iter.next();
 
-	let mut config = match config {
+	let mut err = String::new();	
+	let config = args::construct(
+		args::Parse::new(args_iter),
+		DEF,
+		&mut err
+	);
+
+	let (config, mut paths) = match config {
 		Ok(x) => x,
 		Err(_) => {
 			eprintln!("px: {}", err);
@@ -271,23 +281,23 @@ fn main() {
 		},
 	};
 
-	if config.mode.help {
-		println!("{}", HELP);
+	if config.help {
+		print!("{}", HELP);
 		return;
 	}
-	if config.mode.version {
-		println!("{}", VERSION);
+	if config.version {
+		print!("{}", VERSION);
 		return;
 	}
 
 	let mut rng = lykoi_data::rng::XorShift64::new(getrandom::u64().unwrap_or_else(|_| util_gen_time()));
 
 
-	if config.path.len() == 0 {
-		config.path.push(".".to_string());
+	if paths.len() == 0 {
+		paths.push(".");
 	}
 
-	for string in &config.path {
+	for string in &paths {
 		let path = Path::new(&string);
 		let meta = match fs::metadata(path) {
 			Ok(x) => x,
@@ -338,13 +348,13 @@ fn main() {
 
 				if meta.is_file() {
 					let path = d.path();
-					poke(&mut rng, &path, &config.mode);
+					poke(&mut rng, &path, &config);
 				}
 				// ignore nested directories
 			}
 
 		} else {
-			poke(&mut rng, path, &config.mode);
+			poke(&mut rng, path, &config);
 		}
 	}
 }
