@@ -27,5 +27,6 @@ panic = "abort"
 inherits = "release"
 opt-level = "z"
 panic = "abort"
+codegen-units = 1
 strip = true
 

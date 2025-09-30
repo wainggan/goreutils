@@ -21,3 +21,32 @@ salps --word 5:9
 echo "meow" | rat
 ```
 
+
+## Installation
+
+To install:
+
+```bash
+cargo install goreutils
+```
+
+To uninstall:
+
+```bash
+cargo uninstall goreutils
+```
+
+
+## Building
+
+To build:
+
+```bash
+cargo build
+```
+
+
+## License
+
+goreutils is licensed under the GLWT license - see the license file for details. Do not credit me.
+
