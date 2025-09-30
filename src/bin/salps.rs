@@ -16,6 +16,7 @@ struct Config {
 	sentence_len: Option<(u32, Option<u32>)>,
 	paragraph_len: Option<(u32, Option<u32>)>,
 	which: ConfigWhich,
+	seed: Option<u64>,
 }
 impl Default for Config {
 	fn default() -> Self {
@@ -26,6 +27,7 @@ impl Default for Config {
 			sentence_len: None,
 			paragraph_len: None,
 			which: ConfigWhich::Paragraph,
+			seed: None,
 		}
 	}
 }
@@ -37,6 +39,26 @@ const RULES: &[args::Rule<Config>] = &[
 	}),
 	("version", None, &|c, _, _| {
 		c.version = true;
+		Ok(())
+	}),
+	("seed", None, &|c, a, e| {
+		let Ok(x) = a() else {
+			write!(e, "word: missing parameter").map_err(|_| ())?;
+			return Err(());
+		};
+
+		if x == "_" {
+			c.seed = None;
+			return Ok(());
+		}
+
+		let Ok(x) = u64::from_str_radix(x, 10) else {
+			write!(e, "word: unparsable input").map_err(|_| ())?;
+			return Err(());
+		};
+		
+		c.seed = Some(x);
+
 		Ok(())
 	}),
 	("word", Some('w'), &|c, a, e| {
@@ -139,16 +161,18 @@ Usage: salps [OPTION]...
 Generate text.
   -w, --word [x(:y?)]
                     if y is set, set word length between x and y
-					otherwise, set word length to x. if x is '_', random
+					otherwise, set word length to x. if x is '_', random (default)
   -s, --sentence [x(:y?)]
                     if y is set, set sentence length between x and y
-					otherwise, set sentence length to x. if x is '_', random
+					otherwise, set sentence length to x. if x is '_', random (default)
   -p, --paragraph [x(:y?)]
                     if y is set, set paragraph length between x and y
-					otherwise, set paragraph length to x. if x is '_', random
+					otherwise, set paragraph length to x. if x is '_', random (default)
 
                     the last option will be the option generated.
                     default: --paragraph _
+
+  -d, --seed [x]    seed. if x is '_', random (default)
                     
       --help        display this help and exit
       --version     display version information and exit
@@ -192,7 +216,8 @@ fn main() {
 		}
 	}
 
-	let mut rng = Wrap(lykoi_data::rng::XorShift64::new(getrandom::u64().unwrap_or_else(|_| goreutils::util::gen_time())));
+	let seed = config.seed.unwrap_or_else(|| getrandom::u64().unwrap_or_else(|_| goreutils::util::gen_time()));
+	let mut rng = Wrap(lykoi_data::rng::XorShift64::new(seed));
 
 	let salps_config = salps::Config {
 		word_len: config.word_len,

@@ -13,5 +13,8 @@ sudo px --poke --range 10 50 /etc/passwd
 
 # segmentation fault
 seg
+
+# generate a random "word", 5 to 8 characters long
+salps --word 5:9
 ```
 
