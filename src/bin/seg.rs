@@ -63,16 +63,8 @@ fn main() {
 		return;
 	}
 
-	let mut rng = lykoi_data::rng::XorShift64::new(69);
-
-	loop {
-		let a = rng.nextu();
-		let b = a as usize;
-		let c = b as *mut u8;
-		unsafe {
-			// pray to god this doesn't touch anything stupid
-			std::ptr::write(c, 0);
-		}
+	unsafe {
+		core::ptr::write_volatile(std::ptr::null_mut(), 0);
 	}
 }
 
