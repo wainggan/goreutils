@@ -3,7 +3,7 @@ todo:
 how the hell do you handle errors in rust
 */
 
-use std::{fs, io::ErrorKind, os::unix::fs::FileExt, path::Path, usize};
+use std::{io::ErrorKind, os::unix::fs::FileExt, path::Path};
 use goreutils::args;
 
 #[derive(Debug)]
@@ -37,7 +37,7 @@ impl Default for Config {
 }
 
 fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
-	let file = fs::File::options().read(true).write(true).open(path);
+	let file = std::fs::File::options().read(true).write(true).open(path);
 	let file = match file {
 		Ok(x) => x,
 		Err(e) => {
@@ -365,7 +365,7 @@ fn main() {
 
 	for string in &paths {
 		let path = Path::new(&string);
-		let meta = match fs::metadata(path) {
+		let meta = match std::fs::metadata(path) {
 			Ok(x) => x,
 			Err(e) => {
 				match e.kind() {
@@ -379,7 +379,7 @@ fn main() {
 		
 		if meta.is_dir() {
 
-			let dirs = match fs::read_dir(path) {
+			let dirs = match std::fs::read_dir(path) {
 				Ok(x) => x,
 				Err(e) => {
 					match e.kind() {
