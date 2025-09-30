@@ -161,13 +161,13 @@ Usage: salps [OPTION]...
 Generate text.
   -w, --word [x(:y?)]
                     if y is set, set word length between x and y
-					otherwise, set word length to x. if x is '_', random (default)
+                    otherwise, set word length to x. if x is '_', random (default)
   -s, --sentence [x(:y?)]
                     if y is set, set sentence length between x and y
-					otherwise, set sentence length to x. if x is '_', random (default)
+                    otherwise, set sentence length to x. if x is '_', random (default)
   -p, --paragraph [x(:y?)]
                     if y is set, set paragraph length between x and y
-					otherwise, set paragraph length to x. if x is '_', random (default)
+                    otherwise, set paragraph length to x. if x is '_', random (default)
 
                     the last option will be the option generated.
                     default: --paragraph _
