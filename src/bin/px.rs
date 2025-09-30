@@ -329,7 +329,7 @@ Edit a file fortuitously.
                             if y is '_', a random bit is
                             chosen to be flipped
                       set - set byte to y
-                            y must b formatted as hex
+                            y must be formatted as hex
   -r, --range [x] [y]
                     operate only between bytes x to y
   -l, --loop [x]    run operation x times (default=1)
