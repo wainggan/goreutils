@@ -11,6 +11,7 @@ enum ConfigMode {
 	Poke,
 	ShuffleInc(u8),
 	ShuffleBit(Option<u8>),
+	ShuffleSet(u8),
 	Swap,
 }
 
@@ -69,6 +70,7 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 				ConfigMode::Poke => "poking",
 				ConfigMode::ShuffleBit(_) => "bit shuffling",
 				ConfigMode::ShuffleInc(_) => "inc shuffling",
+				ConfigMode::ShuffleSet(_) => "set shuffling",
 				ConfigMode::Swap => "swapping",
 			},
 			path.as_os_str(),
@@ -144,6 +146,7 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 				}
 			},
 			ConfigMode::ShuffleBit(_) |
+			ConfigMode::ShuffleSet(_) |
 			ConfigMode::ShuffleInc(_) => {
 				let offset = rng.range(beg as f64, end as f64) as u64;
 
@@ -171,6 +174,9 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 					}
 					ConfigMode::ShuffleBit(Some(x)) => {
 						data ^= x;
+					}
+					ConfigMode::ShuffleSet(x) => {
+						data = x;
 					}
 					_ => unreachable!(),
 				}
@@ -228,7 +234,7 @@ const RULES: &[args::Rule<Config>] = &[
 				};
 
 				let Ok(y) = u8::from_str_radix(y, 10) else {
-					write!(e, "loop: unparsable input").map_err(|_| ())?;
+					write!(e, "shuffle: unparsable input").map_err(|_| ())?;
 					return Err(());
 				};
 
@@ -244,11 +250,24 @@ const RULES: &[args::Rule<Config>] = &[
 					c.mode = ConfigMode::ShuffleBit(None);
 				} else {
 					let Ok(y) = u8::from_str_radix(y, 16) else {
-						write!(e, "loop: unparsable input").map_err(|_| ())?;
+						write!(e, "shuffle: unparsable input").map_err(|_| ())?;
 						return Err(());
 					};
 					c.mode = ConfigMode::ShuffleBit(Some(y));
 				}
+			}
+			"set" => {
+				let Ok(y) = a() else {
+					write!(e, "shuffle: missing parameter").map_err(|_| ())?;
+					return Err(());
+				};
+
+				let Ok(y) = u8::from_str_radix(y, 16) else {
+					write!(e, "shuffle: unparsable input").map_err(|_| ())?;
+					return Err(());
+				};
+
+				c.mode = ConfigMode::ShuffleSet(y);
 			}
 			_ => {
 				write!(e, "shuffle: unknown mode '{}'", x).map_err(|_| ())?;
@@ -309,6 +328,8 @@ Edit a file fortuitously.
                             y must be formatted as hex
                             if y is '_', a random bit is
                             chosen to be flipped
+                      set - set byte to y
+                            y must b formatted as hex
   -r, --range [x] [y]
                     operate only between bytes x to y
   -l, --loop [x]    run operation x times (default=1)
