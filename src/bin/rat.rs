@@ -28,7 +28,7 @@ const RULES: &[args::Rule<Config>] = &[
 
 const HELP: &str = "\
 Usage: rat [OPTION]...
-Standard error the standard in.
+Error the standard in.
       --help        display this help and exit
       --version     display version information and exit
 ";
