@@ -3,8 +3,29 @@ name = "goreutils"
 version = "0.1.0"
 edition = "2024"
 
+description = "Let's spice up terminal life a little!"
+
+author = "parchment"
+license-file = "license"
+readme = "readme.md"
+repository = "https://github.com/wainggan/goreutils"
+
 [dependencies]
 argv = "0.1.13"
 getrandom = "0.3.3"
 lykoi_data = "0.6.0"
 salps = "0.6.0"
+
+[profile.release]
+lto = true
+
+[profile.release-fast]
+inherits = "release"
+panic = "abort"
+
+[profile.release-smol]
+inherits = "release"
+opt-level = "z"
+panic = "abort"
+strip = true
+
