@@ -80,8 +80,14 @@ impl<'a, I: Iterator<Item = &'a str>> Iterator for Parse<'a, I> {
 pub type Rule<'a, T> = (
 	&'static str,
 	Option<char>,
-	u8,
-	&'a dyn Fn(&mut T, &[&str], &mut dyn std::fmt::Write) -> Result<(), ()>,
+	&'a dyn Fn(
+		// config
+		&mut T,
+		// params
+		&mut dyn FnMut() -> Result<&'a str, ()>,
+		// err
+		&mut dyn std::fmt::Write
+	) -> Result<(), ()>,
 );
 
 pub fn construct<'a, T: Default, I: Iterator<Item = &'a str>>(
@@ -91,7 +97,6 @@ pub fn construct<'a, T: Default, I: Iterator<Item = &'a str>>(
 ) -> Result<(T, Vec<&'a str>), ()> {
 	let mut config = T::default();
 
-	let mut params = Vec::new();
 	let mut values = Vec::new();
 
 	while let Some(arg) = parse.next() {
@@ -102,15 +107,17 @@ pub fn construct<'a, T: Default, I: Iterator<Item = &'a str>>(
 					return Err(());
 				};
 
-				for _ in 0..rule.2 {
-					let Some(param) = parse.next() else {
-						write!(err, "option '--{}' requires {} arguments", x, rule.2).map_err(|_| ())?;
-						return Err(());
-					};
-					params.push(param.as_str());
-				}
-
-				rule.3(&mut config, &params, err)?;
+				rule.2(
+					&mut config,
+					&mut || {
+						if let Some(param) = parse.next() {
+							Ok(param.as_str())
+						} else {
+							Err(())
+						}
+					},
+					err,
+				)?;
 			}
 			Arg::Short(x) => {
 				let Some(rule) = rules.iter().find(|a| a.1 == x.chars().nth(0)) else {
@@ -118,17 +125,17 @@ pub fn construct<'a, T: Default, I: Iterator<Item = &'a str>>(
 					return Err(());
 				};
 
-				if rule.2 > 0 {
-					for _ in 0..rule.2 {
-						let Some(param) = parse.next() else {
-							write!(err, "option requires {} arguments -- '-{}' ('--{}')", rule.2, x, rule.0).map_err(|_| ())?;
-							return Err(());
-						};
-						params.push(param.as_str());
-					}
-				}
-
-				rule.3(&mut config, &params, err)?;
+				rule.2(
+					&mut config,
+					&mut || {
+						if let Some(param) = parse.next() {
+							Ok(param.as_str())
+						} else {
+							Err(())
+						}
+					},
+					err,
+				)?;
 			}
 			Arg::Value(x) => {
 				values.push(x);
@@ -142,7 +149,7 @@ pub fn construct<'a, T: Default, I: Iterator<Item = &'a str>>(
 pub fn quick<'a, T: Default>(rules: &[Rule<'a, T>]) -> Result<(T, Vec<String>), String> {
 	let mut args = argv::iter().filter_map(|x| x.to_str());
 	args.next();
-	
+
 	let mut err = String::new();	
 
 	let config = construct(

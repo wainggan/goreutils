@@ -15,11 +15,11 @@ impl Default for Config {
 }
 
 const RULES: &[args::Rule<Config>] = &[
-	("help", None, 0, &|c, _, _| {
+	("help", None, &|c, _, _| {
 		c.help = true;
 		Ok(())
 	}),
-	("version", None, 0, &|c, _, _| {
+	("version", None, &|c, _, _| {
 		c.version = true;
 		Ok(())
 	}),

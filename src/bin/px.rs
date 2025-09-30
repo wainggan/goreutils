@@ -1,6 +1,5 @@
 /*
 todo:
-remove String arg parsing
 how the hell do you handle errors in rust
 */
 
@@ -10,7 +9,8 @@ use goreutils::args;
 #[derive(Debug)]
 enum ConfigMode {
 	Poke,
-	Shuffle,
+	ShuffleInc(u8),
+	ShuffleBit(u8),
 	Swap,
 }
 
@@ -67,7 +67,8 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 			"{} '{:?}' {} time(s)",
 			match config.mode {
 				ConfigMode::Poke => "poking",
-				ConfigMode::Shuffle => "shuffling",
+				ConfigMode::ShuffleBit(_) => "bit shuffling",
+				ConfigMode::ShuffleInc(_) => "inc shuffling",
 				ConfigMode::Swap => "swapping",
 			},
 			path.as_os_str(),
@@ -142,7 +143,8 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 					},
 				}
 			},
-			ConfigMode::Shuffle => {
+			ConfigMode::ShuffleBit(_) |
+			ConfigMode::ShuffleInc(_) => {
 				let offset = rng.range(beg as f64, end as f64) as u64;
 
 				let mut scratch = [0];
@@ -158,7 +160,21 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 				};
 				let mut data = scratch[0];
 
-				data = data.wrapping_add(1);
+				match config.mode {
+					ConfigMode::ShuffleInc(x) => {
+						data = data.wrapping_add(x);
+					}
+					ConfigMode::ShuffleBit(0xff) => {
+						let select_bit = rng.range(0.0, 8.0) as u8;
+						let bit = 1u8 << select_bit;
+						data ^= bit;
+					}
+					ConfigMode::ShuffleBit(x) => {
+						let bit = 1u8 << x;
+						data ^= bit;
+					}
+					_ => unreachable!(),
+				}
 
 				match file.write_at(&[data], offset) {
 					Ok(_) => (),
@@ -188,48 +204,106 @@ fn util_gen_time() -> u64 {
 }
 
 const RULES: &[args::Rule<Config>] = &[
-	("help", None, 0, &|c, _, _| {
+	("help", None, &|c, _, _| {
 		c.help = true;
 		Ok(())
 	}),
-	("version", None, 0, &|c, _, _| {
+	("version", None, &|c, _, _| {
 		c.version = true;
 		Ok(())
 	}),
-	("verbose", Some('v'), 0, &|c, _, _| {
+	("verbose", Some('v'), &|c, _, _| {
 		c.verbose = true;
 		Ok(())
 	}),
-	("poke", Some('p'), 0, &|c, _, _| {
+	("poke", Some('p'), &|c, _, _| {
 		c.mode = ConfigMode::Poke;
 		Ok(())
 	}),
-	("swap", Some('w'), 0, &|c, _, _| {
+	("swap", Some('w'), &|c, _, _| {
 		c.mode = ConfigMode::Swap;
 		Ok(())
 	}),
-	("shuffle", Some('s'), 0, &|c, _, _| {
-		c.mode = ConfigMode::Shuffle;
+	("shuffle", Some('s'), &|c, a, e| {
+		let Ok(x) = a() else {
+			write!(e, "shuffle: missing parameter").map_err(|_| ())?;
+			return Err(());
+		};
+
+		match x {
+			"inc" => {
+				let Ok(y) = a() else {
+					write!(e, "shuffle: missing parameter").map_err(|_| ())?;
+					return Err(());
+				};
+				let Ok(y) = u8::from_str_radix(y, 10) else {
+					write!(e, "loop: unparsable input").map_err(|_| ())?;
+					return Err(());
+				};
+
+				c.mode = ConfigMode::ShuffleInc(y);
+			}
+			"bit" => {
+				let Ok(y) = a() else {
+					write!(e, "shuffle: missing parameter").map_err(|_| ())?;
+					return Err(());
+				};
+
+				if y == "_" {
+					c.mode = ConfigMode::ShuffleBit(0xff);
+				} else {
+					let Ok(y) = u8::from_str_radix(y, 10) else {
+						write!(e, "loop: unparsable input").map_err(|_| ())?;
+						return Err(());
+					};
+					if y >= 8 {
+						write!(e, "loop: why").map_err(|_| ())?;
+						return Err(());
+					}
+					c.mode = ConfigMode::ShuffleBit(y);
+				}
+			}
+			_ => {
+				write!(e, "shuffle: unknown mode '{}'", x).map_err(|_| ())?;
+				return Err(());
+			}
+		}
+
 		Ok(())
 	}),
-	("loop", Some('l'), 1, &|c, a, e| {
-		let Ok(amount) = u32::from_str_radix(&a[0], 10) else {
+	("loop", Some('l'), &|c, a, e| {
+		let Ok(amount) = a() else {
+			write!(e, "loop: missing parameter").map_err(|_| ())?;
+			return Err(());
+		};
+		let Ok(amount) = u32::from_str_radix(amount, 10) else {
 			write!(e, "loop: unparsable input").map_err(|_| ())?;
 			return Err(());
 		};
 		c.times = amount;
 		Ok(())
 	}),
-	("range", Some('r'), 2, &|c, a, e| {
-		let Ok(x) = usize::from_str_radix(&a[0], 10) else {
+	("range", Some('r'), &|c, a, e| {
+		let Ok(x) = a() else {
+			write!(e, "range: missing minimum parameter").map_err(|_| ())?;
+			return Err(());
+		};
+		let Ok(y) = a() else {
+			write!(e, "range: missing maximum parameter").map_err(|_| ())?;
+			return Err(());
+		};
+
+		let Ok(x) = usize::from_str_radix(x, 10) else {
 			write!(e, "range: unparsable input").map_err(|_| ())?;
 			return Err(());
 		};
-		let Ok(y) = usize::from_str_radix(&a[1], 10) else {
+		let Ok(y) = usize::from_str_radix(y, 10) else {
 			write!(e, "range: unparsable input").map_err(|_| ())?;
 			return Err(());
 		};
+		
 		c.range = Some((x, y));
+		
 		Ok(())
 	}),
 ];
@@ -240,7 +314,13 @@ Edit a file fortuitously.
   -v, --verbose     list touched files
   -p, --poke        select a byte and randomize (default)
   -w, --swap        select two bytes and swap
-  -s, --shuffle     select a byte and increment
+  -s, --shuffle [x] [y]
+                    select a byte and perform operation x
+                    valid options for x:
+                      inc - increments selected byte by y
+                      bit - performs a bit-flip at bit y
+                            (if y is '_', this is chosen
+                            randomly)
   -r, --range [x] [y]
                     operate only between bytes x to y
   -l, --loop [x]    run operation x times (default=1)
