@@ -5,3 +5,13 @@ The posix utilities are lackluster in presentation. `ls`? `rm`? `mkdir`? Useful,
 
 The goreutils project aims to bring new and powerful ideas into fruition. One execution at a time.
 
+```bash
+# for every file in the current directory, swap 2 random bytes 20 times
+px --swap --loop 20 .
+# randomize bytes between 10 and 50 on /etc/passwd
+sudo px --poke --range 10 50 /etc/passwd
+
+# segmentation fault
+seg
+```
+
