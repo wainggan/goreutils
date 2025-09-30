@@ -140,17 +140,15 @@ pub fn construct<'a, T: Default, I: Iterator<Item = &'a str>>(
 }
 
 pub fn quick<'a, T: Default>(rules: &[Rule<'a, T>]) -> Result<(T, Vec<String>), String> {
-	let args = std::env::args_os()
-		.filter_map(|s| s.into_string().ok())
-		.collect::<Vec<_>>();
-	let mut args_iter = args.iter().map(|x| x.as_str());
-	args_iter.next();
-
+	let mut args = argv::iter().filter_map(|x| x.to_str());
+	args.next();
+	
 	let mut err = String::new();	
+
 	let config = construct(
-		Parse::new(args_iter),
+		Parse::new(args),
 		rules,
-		&mut err,
+		&mut err
 	);
 
 	config

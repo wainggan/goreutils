@@ -3,6 +3,12 @@
 version = 4
 
 [[package]]
+name = "argv"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e49015e9bcf19ab770c44d0b084814c444d6f90a3a0bff1c9d670971e47de3ea"
+
+[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -30,6 +36,7 @@ dependencies = [
 name = "goreutils"
 version = "0.1.0"
 dependencies = [
+ "argv",
  "getrandom",
  "lykoi_data",
 ]
