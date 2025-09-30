@@ -39,6 +39,7 @@ dependencies = [
  "argv",
  "getrandom",
  "lykoi_data",
+ "salps",
 ]
 
 [[package]]
@@ -70,6 +71,12 @@ name = "r-efi"
 version = "5.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
+
+[[package]]
+name = "salps"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b91b8ed12b5a0f9cdd56c5ea9e4bb4d1e6041090c804ea9da542bbb6515675c"
 
 [[package]]
 name = "wasi"

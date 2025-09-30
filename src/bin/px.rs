@@ -193,15 +193,6 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 	}
 }
 
-fn util_gen_time() -> u64 {
-	std::time::SystemTime::now()
-		.duration_since(std::time::UNIX_EPOCH)
-		.unwrap_or(std::time::Duration::from_millis(0x6969696969696969))
-		.as_millis()
-		.wrapping_pow(7)
-		.wrapping_pow(5) as u64
-}
-
 const RULES: &[args::Rule<Config>] = &[
 	("help", None, &|c, _, _| {
 		c.help = true;
@@ -356,7 +347,7 @@ fn main() {
 		return;
 	}
 
-	let mut rng = lykoi_data::rng::XorShift64::new(getrandom::u64().unwrap_or_else(|_| util_gen_time()));
+	let mut rng = lykoi_data::rng::XorShift64::new(getrandom::u64().unwrap_or_else(|_| goreutils::util::gen_time()));
 
 
 	if paths.len() == 0 {
