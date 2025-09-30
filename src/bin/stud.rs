@@ -126,9 +126,9 @@ fn main() {
 			Ok(x) => x,
 			Err(e) => {
 				match e.kind() {
-					std::io::ErrorKind::NotFound => eprintln!("px: cannot open '{:?}': No such file or directory", path.as_os_str()),
-					std::io::ErrorKind::PermissionDenied => eprintln!("px: cannot open '{:?}': Permission denied", path.as_os_str()),
-					_ => eprintln!("px: cannot open '{:?}': Unknown error", path.as_os_str()),
+					std::io::ErrorKind::NotFound => eprintln!("stud: cannot open '{:?}': No such file or directory", path.as_os_str()),
+					std::io::ErrorKind::PermissionDenied => eprintln!("stud: cannot open '{:?}': Permission denied", path.as_os_str()),
+					_ => eprintln!("stud: cannot open '{:?}': Unknown error", path.as_os_str()),
 				}
 				return;
 			},
