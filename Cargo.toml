@@ -5,7 +5,6 @@ edition = "2024"
 
 description = "Let's spice up terminal life a little!"
 
-author = "parchment"
 license-file = "license"
 readme = "readme.md"
 repository = "https://github.com/wainggan/goreutils"

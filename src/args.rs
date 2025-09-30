@@ -8,9 +8,9 @@ pub enum Arg<'a> {
 impl<'a> Arg<'a> {
 	pub fn as_str(&self) -> &'a str {
 		match self {
-			Arg::Long(x) => *x,
-			Arg::Short(x) => *x,
-			Arg::Value(x) => *x,
+			Arg::Long(x) => x,
+			Arg::Short(x) => x,
+			Arg::Value(x) => x,
 		}
 	}
 }
@@ -93,6 +93,7 @@ pub type Rule<'a, T> = (
 	) -> Result<(), ()>,
 );
 
+#[allow(clippy::result_unit_err)]
 pub fn construct<'a, T: Default>(
 	mut parse: impl Iterator<Item = Arg<'a>>,
 	rules: &[Rule<'a, T>],
@@ -123,7 +124,7 @@ pub fn construct<'a, T: Default>(
 				)?;
 			}
 			Arg::Short(x) => {
-				let Some(rule) = rules.iter().find(|a| a.1 == x.chars().nth(0)) else {
+				let Some(rule) = rules.iter().find(|a| a.1 == x.chars().next()) else {
 					write!(err, "invalid option -- '-{}'", x).map_err(|_| ())?;
 					return Err(());
 				};

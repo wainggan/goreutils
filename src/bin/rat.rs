@@ -5,6 +5,7 @@ struct Config {
 	help: bool,
 	version: bool,
 }
+#[allow(clippy::derivable_impls)]
 impl Default for Config {
 	fn default() -> Self {
 		Self {

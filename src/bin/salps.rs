@@ -52,7 +52,7 @@ const RULES: &[args::Rule<Config>] = &[
 			return Ok(());
 		}
 
-		let Ok(x) = u64::from_str_radix(x, 10) else {
+		let Ok(x) = x.parse() else {
 			write!(e, "word: unparsable input").map_err(|_| ())?;
 			return Err(());
 		};
@@ -80,13 +80,13 @@ const RULES: &[args::Rule<Config>] = &[
 			return Ok(());
 		}
 
-		let Ok(x) = u32::from_str_radix(x, 10) else {
+		let Ok(x) = x.parse() else {
 			write!(e, "word: unparsable input").map_err(|_| ())?;
 			return Err(());
 		};
 
 		let y = split.next();
-		let y = y.and_then(|x| u32::from_str_radix(x, 10).ok());
+		let y = y.and_then(|x| x.parse().ok());
 
 		c.word_len = Some((x, y));
 
@@ -111,13 +111,13 @@ const RULES: &[args::Rule<Config>] = &[
 			return Ok(());
 		}
 
-		let Ok(x) = u32::from_str_radix(x, 10) else {
+		let Ok(x) = x.parse() else {
 			write!(e, "sentences: unparsable input").map_err(|_| ())?;
 			return Err(());
 		};
 
 		let y = split.next();
-		let y = y.and_then(|x| u32::from_str_radix(x, 10).ok());
+		let y = y.and_then(|x| x.parse().ok());
 
 		c.sentence_len = Some((x, y));
 
@@ -142,13 +142,13 @@ const RULES: &[args::Rule<Config>] = &[
 			return Ok(());
 		}
 
-		let Ok(x) = u32::from_str_radix(x, 10) else {
+		let Ok(x) = x.parse() else {
 			write!(e, "paragraph: unparsable input").map_err(|_| ())?;
 			return Err(());
 		};
 
 		let y = split.next();
-		let y = y.and_then(|x| u32::from_str_radix(x, 10).ok());
+		let y = y.and_then(|x| x.parse().ok());
 
 		c.paragraph_len = Some((x, y));
 

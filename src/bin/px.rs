@@ -90,11 +90,9 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 
 				match file.write_at(&[data], offset) {
 					Ok(_) => (),
-					Err(e) => {
-						match e.kind() {
-							_ => eprintln!("px: could not write to '{:?}'", path.as_os_str()),
-						}
-						return;
+					Err(_) => {
+						eprintln!("px: could not write to '{:?}'", path.as_os_str());
+						// return;
 					},
 				}
 			},
@@ -106,10 +104,8 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 
 				match file.read_at(&mut scratch, offset_0) {
 					Ok(_) => (),
-					Err(e) => {
-						match e.kind() {
-							_ => eprintln!("px: could not read '{:?}'", path.as_os_str()),
-						}
+					Err(_) => {
+						eprintln!("px: could not read '{:?}'", path.as_os_str());
 						return;
 					},
 				};
@@ -117,10 +113,8 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 				
 				match file.read_at(&mut scratch, offset_1) {
 					Ok(_) => (),
-					Err(e) => {
-						match e.kind() {
-							_ => eprintln!("px: could not read '{:?}'", path.as_os_str()),
-						}
+					Err(_) => {
+						eprintln!("px: could not read '{:?}'", path.as_os_str());
 						return;
 					},
 				};
@@ -128,20 +122,16 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 
 				match file.write_at(&[data_0], offset_1) {
 					Ok(_) => (),
-					Err(e) => {
-						match e.kind() {
-							_ => eprintln!("px: could not write to '{:?}'", path.as_os_str()),
-						}
+					Err(_) => {
+						eprintln!("px: could not write to '{:?}'", path.as_os_str());
 						return;
 					},
 				}
 				match file.write_at(&[data_1], offset_0) {
 					Ok(_) => (),
-					Err(e) => {
-						match e.kind() {
-							_ => eprintln!("px: could not write to '{:?}'", path.as_os_str()),
-						}
-						return;
+					Err(_) => {
+						eprintln!("px: could not write to '{:?}'", path.as_os_str());
+						// return;
 					},
 				}
 			},
@@ -154,10 +144,8 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 
 				match file.read_at(&mut scratch, offset) {
 					Ok(_) => (),
-					Err(e) => {
-						match e.kind() {
-							_ => eprintln!("px: could not read '{:?}'", path.as_os_str()),
-						}
+					Err(_) => {
+						eprintln!("px: could not read '{:?}'", path.as_os_str());
 						return;
 					},
 				};
@@ -183,11 +171,9 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 
 				match file.write_at(&[data], offset) {
 					Ok(_) => (),
-					Err(e) => {
-						match e.kind() {
-							_ => eprintln!("px: could not write to '{:?}'", path.as_os_str()),
-						}
-						return;
+					Err(_) => {
+						eprintln!("px: could not write to '{:?}'", path.as_os_str());
+						// return;
 					},
 				}
 			},
@@ -233,7 +219,7 @@ const RULES: &[args::Rule<Config>] = &[
 					return Err(());
 				};
 
-				let Ok(y) = u8::from_str_radix(y, 10) else {
+				let Ok(y) = y.parse() else {
 					write!(e, "shuffle: unparsable input").map_err(|_| ())?;
 					return Err(());
 				};
@@ -282,7 +268,7 @@ const RULES: &[args::Rule<Config>] = &[
 			write!(e, "loop: missing parameter").map_err(|_| ())?;
 			return Err(());
 		};
-		let Ok(amount) = u32::from_str_radix(amount, 10) else {
+		let Ok(amount) = amount.parse() else {
 			write!(e, "loop: unparsable input").map_err(|_| ())?;
 			return Err(());
 		};
@@ -299,11 +285,11 @@ const RULES: &[args::Rule<Config>] = &[
 			return Err(());
 		};
 
-		let Ok(x) = usize::from_str_radix(x, 10) else {
+		let Ok(x) = x.parse() else {
 			write!(e, "range: unparsable input").map_err(|_| ())?;
 			return Err(());
 		};
-		let Ok(y) = usize::from_str_radix(y, 10) else {
+		let Ok(y) = y.parse() else {
 			write!(e, "range: unparsable input").map_err(|_| ())?;
 			return Err(());
 		};
@@ -371,7 +357,7 @@ fn main() {
 	let mut rng = lykoi_data::rng::XorShift64::new(getrandom::u64().unwrap_or_else(|_| goreutils::util::gen_time()));
 
 
-	if paths.len() == 0 {
+	if paths.is_empty() {
 		paths.push(".".to_string());
 	}
 
