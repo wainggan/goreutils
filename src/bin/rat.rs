@@ -27,13 +27,13 @@ const RULES: &[args::Rule<Config>] = &[
 
 const HELP: &str = "\
 Usage: rat [OPTION]...
-Standard out the standard in.
+Standard error the standard in.
       --help        display this help and exit
       --version     display version information and exit
 ";
 
 const VERSION: &str = "\
-rat (goreutils) 0.2
+rat (goreutils) 0.1
 Copyright (C) 2025 Everyone, except Author.
 License GLWT
 Everyone is permitted to copy, distribute, modify, merge, sell, publish,
@@ -70,11 +70,11 @@ fn main() {
 		}
 	}
 
-	let stdout = std::io::stdout();
+	let stderr = std::io::stderr();
 
-	match std::io::copy(&mut stdin.lock(), &mut stdout.lock()) {
+	match std::io::copy(&mut stdin.lock(), &mut stderr.lock()) {
 		Ok(_) => (),
-		Err(e) => eprintln!("rat: error writing to stdout - '{}'", e),
+		Err(e) => eprintln!("rat: error writing to stderr - '{}'", e),
 	}
 }
 

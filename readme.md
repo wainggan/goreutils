@@ -16,5 +16,8 @@ seg
 
 # generate a random "word", 5 to 8 characters long
 salps --word 5:9
+
+# print arbitrary text
+echo "meow" | rat
 ```
 
