@@ -78,8 +78,11 @@ impl<'a, I: Iterator<Item = &'a str>> Iterator for Parse<'a, I> {
 }
 
 pub type Rule<'a, T> = (
+	// name
 	&'static str,
+	// short
 	Option<char>,
+	// mod
 	&'a dyn Fn(
 		// config
 		&mut T,
@@ -90,8 +93,8 @@ pub type Rule<'a, T> = (
 	) -> Result<(), ()>,
 );
 
-pub fn construct<'a, T: Default, I: Iterator<Item = &'a str>>(
-	mut parse: Parse<'a, I>,
+pub fn construct<'a, T: Default>(
+	mut parse: impl Iterator<Item = Arg<'a>>,
 	rules: &[Rule<'a, T>],
 	err: &mut impl std::fmt::Write,
 ) -> Result<(T, Vec<&'a str>), ()> {
@@ -155,7 +158,7 @@ pub fn quick<'a, T: Default>(rules: &[Rule<'a, T>]) -> Result<(T, Vec<String>), 
 	let config = construct(
 		Parse::new(args),
 		rules,
-		&mut err
+		&mut err,
 	);
 
 	config

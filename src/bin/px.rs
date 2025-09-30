@@ -10,7 +10,7 @@ use goreutils::args;
 enum ConfigMode {
 	Poke,
 	ShuffleInc(u8),
-	ShuffleBit(u8),
+	ShuffleBit(Option<u8>),
 	Swap,
 }
 
@@ -164,14 +164,13 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 					ConfigMode::ShuffleInc(x) => {
 						data = data.wrapping_add(x);
 					}
-					ConfigMode::ShuffleBit(0xff) => {
+					ConfigMode::ShuffleBit(None) => {
 						let select_bit = rng.range(0.0, 8.0) as u8;
 						let bit = 1u8 << select_bit;
 						data ^= bit;
 					}
-					ConfigMode::ShuffleBit(x) => {
-						let bit = 1u8 << x;
-						data ^= bit;
+					ConfigMode::ShuffleBit(Some(x)) => {
+						data ^= x;
 					}
 					_ => unreachable!(),
 				}
@@ -236,6 +235,7 @@ const RULES: &[args::Rule<Config>] = &[
 					write!(e, "shuffle: missing parameter").map_err(|_| ())?;
 					return Err(());
 				};
+
 				let Ok(y) = u8::from_str_radix(y, 10) else {
 					write!(e, "loop: unparsable input").map_err(|_| ())?;
 					return Err(());
@@ -250,17 +250,13 @@ const RULES: &[args::Rule<Config>] = &[
 				};
 
 				if y == "_" {
-					c.mode = ConfigMode::ShuffleBit(0xff);
+					c.mode = ConfigMode::ShuffleBit(None);
 				} else {
-					let Ok(y) = u8::from_str_radix(y, 10) else {
+					let Ok(y) = u8::from_str_radix(y, 16) else {
 						write!(e, "loop: unparsable input").map_err(|_| ())?;
 						return Err(());
 					};
-					if y >= 8 {
-						write!(e, "loop: why").map_err(|_| ())?;
-						return Err(());
-					}
-					c.mode = ConfigMode::ShuffleBit(y);
+					c.mode = ConfigMode::ShuffleBit(Some(y));
 				}
 			}
 			_ => {
@@ -318,9 +314,10 @@ Edit a file fortuitously.
                     select a byte and perform operation x
                     valid options for x:
                       inc - increments selected byte by y
-                      bit - performs a bit-flip at bit y
-                            (if y is '_', this is chosen
-                            randomly)
+                      bit - performs xor with y
+                            y must be formatted as hex
+                            if y is '_', a random bit is
+                            chosen to be flipped
   -r, --range [x] [y]
                     operate only between bytes x to y
   -l, --loop [x]    run operation x times (default=1)
