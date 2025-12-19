@@ -74,10 +74,10 @@ fn run<T: std::io::Read>(bytes: std::io::Bytes<T>, config: &Config) {
 
 		let now = std::time::Instant::now();
 
-		if let Err(_) = stdout.write(&[u]) {
+		if stdout.write(&[u]).is_err() {
 			break;
 		}
-		if let Err(_) = stdout.flush() {
+		if stdout.flush().is_err() {
 			break;
 		}
 
@@ -107,7 +107,7 @@ fn main() {
 	use std::io::Read;
 
 	if !stdin.is_terminal() {
-		let bytes = stdin.bytes();
+		let bytes = std::io::BufReader::new(stdin).bytes();
 		run(bytes, &config);
 	} else {
 		if config.help || paths.is_empty() {
@@ -134,7 +134,7 @@ fn main() {
 			},
 		};
 
-		let bytes = file.bytes();
+		let bytes = std::io::BufReader::new(file).bytes();
 		run(bytes, &config);
 	}
 }

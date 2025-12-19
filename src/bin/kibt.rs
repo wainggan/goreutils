@@ -256,15 +256,13 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 	}
 
 	fn check(&mut self, kinds: &[Kind]) -> Option<Token<'a>> {
-		let Some(peek) = self.tokens.peek() else {
-			return None;
-		};
+		let peek = self.tokens.peek()?;
 		for k in kinds {
 			if *k == peek.kind {
 				return self.tokens.next();
 			}
 		}
-		return None;
+		None
 	}
 	fn crack(&mut self, mut predicate: impl FnMut(&Token<'a>) -> bool) -> Option<Token<'a>> {
 		if predicate(self.tokens.peek()?) {
@@ -299,14 +297,14 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 			// returning here should be fine, so long as no other code tries to handle the error
 			// todo: that sucks though
 
-			if let Some(_) = self.crack(|x| matches!((&x.kind, x.data), (&Kind::Ident, "let"))) {
-				let name = self.check(&[Kind::Ident]).ok_or_else(|| format!("missing var name"))?;
+			if self.crack(|x| matches!((&x.kind, x.data), (&Kind::Ident, "let"))).is_some() {
+				let name = self.check(&[Kind::Ident]).ok_or_else(|| "missing var name".to_string())?;
 				self.primary(bin)?;
 				self.env.push((name.data, self.scope_depth));
 				bin.push(ops::LIT_NONE);
 			}
-			else if let Some(_) = self.crack(|x| matches!((&x.kind, x.data), (&Kind::Ident, "set"))) {
-				let name = self.check(&[Kind::Ident]).ok_or_else(|| format!("missing var name"))?;
+			else if self.crack(|x| matches!((&x.kind, x.data), (&Kind::Ident, "set"))).is_some() {
+				let name = self.check(&[Kind::Ident]).ok_or_else(|| "missing var name".to_string())?;
 
 				self.primary(bin)?;
 
@@ -364,23 +362,23 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 	}
 
 	fn primary(&mut self, bin: &mut Vec<u8>) -> Result<(), String> {
-		if let Some(_) = self.check(&[Kind::LParen]) {
+		if self.check(&[Kind::LParen]).is_some() {
 			return self.list(bin);
 		}
 
-		if let Some(_) = self.check(&[Kind::LBrace]) {
+		if self.check(&[Kind::LBrace]).is_some() {
 			return self.block(bin);
 		}
 
 		if let Some(x) = self.check(&[Kind::Int]) {
-			let a = x.data.parse::<i32>().map_err(|_| format!("number parse error"))?;
+			let a = x.data.parse::<i32>().map_err(|_| "number parse error".to_string())?;
 			bin.push(ops::LIT_INT);
 			bin.extend_from_slice(&a.to_be_bytes());
 			return Ok(());
 		}
 
 		if let Some(x) = self.check(&[Kind::Flt]) {
-			let a = x.data.parse::<f32>().map_err(|_| format!("number parse error"))?;
+			let a = x.data.parse::<f32>().map_err(|_| "number parse error".to_string())?;
 			bin.push(ops::LIT_FLT);
 			bin.extend_from_slice(&a.to_be_bytes());
 			return Ok(());
@@ -442,7 +440,7 @@ impl<'a, 'b, 'c, T> Interpret<'a, 'b, 'c, T> {
 		let x = self.pc;
 		self.pc += N;
 		let y = self.pc;
-		Some(self.bin.get(x..y)?.try_into().ok()?)
+		self.bin.get(x..y)?.try_into().ok()
 	}
 
 	fn end(&self) -> bool {
@@ -701,7 +699,7 @@ fn main() {
 
 		let bin = crate::Compile::new(tokens.into_iter(), &globals).parse().unwrap();
 
-		for i in 0..canvas.len() {
+		for (i, poke) in canvas.iter_mut().enumerate() {
 			let px = (i as u32 % config.size.0, i as u32 / config.size.0);
 			let env = Env {
 				uv: (px.0 as f32 / config.size.0 as f32, px.1 as f32 / config.size.1 as f32),
@@ -739,7 +737,6 @@ fn main() {
 				}
 			};
 
-			let poke = &mut canvas[i];
 			*poke = color;
 		}
 	}
@@ -804,8 +801,7 @@ fn main() {
 	}
 
 	std::fs::write(
-		config.output.as_ref()
-			.map(|x| x.as_str())
+		config.output.as_deref()
 			.unwrap_or("output.bmp"),
 		&buffer
 	).unwrap();
