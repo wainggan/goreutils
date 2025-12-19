@@ -172,14 +172,14 @@ Generate text.
                     the last option will be the option generated.
                     default: --paragraph _
 
-  -d, --seed [x]    seed. if x is '_', random (default)
+      --seed [x]    seed. if x is '_', random (default)
                     
       --help        display this help and exit
       --version     display version information and exit
 ";
 
 const VERSION: &str = "\
-salps (goreutils) 0.1
+salps (goreutils) 0.2
 Copyright (C) 2025 Everyone, except Author.
 License GLWT
 Everyone is permitted to copy, distribute, modify, merge, sell, publish,
@@ -210,8 +210,8 @@ fn main() {
 	}
 
 	struct Wrap(lykoi_data::rng::XorShift64);
-	impl salps::Rand for Wrap {
-		fn next(&mut self) -> f64 {
+	impl salps::Random for Wrap {
+		fn random(&mut self) -> f64 {
 			self.0.nextf()
 		}
 	}
@@ -219,18 +219,42 @@ fn main() {
 	let seed = config.seed.unwrap_or_else(|| getrandom::u64().unwrap_or_else(|_| goreutils::util::gen_time()));
 	let mut rng = Wrap(lykoi_data::rng::XorShift64::new(seed));
 
-	let salps_config = salps::Config {
-		word_len: config.word_len,
-		sentence_len: config.sentence_len,
-		paragraph_len: config.paragraph_len,
+	let mut salps_config = salps::Config::new();
+
+	salps_config = match config.word_len {
+		None => salps_config.word(()),
+		Some((x, None)) => salps_config.word(x),
+		Some((x, Some(y))) => salps_config.word(x..y),
 	};
+
+	salps_config = match config.sentence_len {
+		None => salps_config.sentence(()),
+		Some((x, None)) => salps_config.sentence(x),
+		Some((x, Some(y))) => salps_config.sentence(x..y),
+	};
+
+	salps_config = match config.paragraph_len {
+		None => salps_config.paragraph(()),
+		Some((x, None)) => salps_config.paragraph(x),
+		Some((x, Some(y))) => salps_config.paragraph(x..y),
+	};
+
+	let mut string = String::new();
 
 	let out = match config.which {
-		ConfigWhich::Word => salps::word(&mut rng, &salps_config),
-		ConfigWhich::Sentence => salps::sentence(&mut rng, &salps_config),
-		ConfigWhich::Paragraph => salps::paragraph(&mut rng, &salps_config),
+		ConfigWhich::Word => salps::word(&mut string, &mut rng, &salps_config),
+		ConfigWhich::Sentence => salps::sentence(&mut string, &mut rng, &salps_config),
+		ConfigWhich::Paragraph => salps::paragraph(&mut string, &mut rng, &salps_config),
 	};
 
-	println!("{}", out);
+	match out {
+		Ok(..) => (),
+		Err(e) => {
+			eprintln!("{}", e);
+			return;
+		}
+	}
+
+	println!("{}", string);
 }
 
