@@ -209,15 +209,16 @@ fn main() {
 		return;
 	}
 
-	struct Wrap(lykoi_data::rng::XorShift64);
+	struct Wrap(prrng::XorShift64);
 	impl salps::Random for Wrap {
 		fn random(&mut self) -> f64 {
-			self.0.nextf()
+			use prrng::Random;
+			self.0.random()
 		}
 	}
 
 	let seed = config.seed.unwrap_or_else(|| getrandom::u64().unwrap_or_else(|_| goreutils::util::gen_time()));
-	let mut rng = Wrap(lykoi_data::rng::XorShift64::new(seed));
+	let mut rng = Wrap(prrng::XorShift64::new(seed));
 
 	let mut salps_config = salps::Config::new();
 

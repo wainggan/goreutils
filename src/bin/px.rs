@@ -37,7 +37,9 @@ impl Default for Config {
 	}
 }
 
-fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
+fn poke(rng: &mut prrng::XorShift64, path: &Path, config: &Config) {
+	use prrng::Random;
+
 	let file = std::fs::File::options().read(true).write(true).open(path);
 	let file = match file {
 		Ok(x) => x,
@@ -85,8 +87,8 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 	let mut run = || {
 		match config.mode {
 			ConfigMode::Poke => {
-				let offset = rng.range(beg as f64, end as f64) as u64;
-				let data = (rng.nextf() * 256.0) as u8;
+				let offset = rng.random_range(beg as f64..end as f64) as u64;
+				let data = rng.random_u8();
 
 				match file.write_at(&[data], offset) {
 					Ok(_) => (),
@@ -97,8 +99,8 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 				}
 			},
 			ConfigMode::Swap => {
-				let offset_0 = rng.range(beg as f64, end as f64) as u64;
-				let offset_1 = rng.range(beg as f64, end as f64) as u64;
+				let offset_0 = rng.random_range(beg as f64..end as f64) as u64;
+				let offset_1 = rng.random_range(beg as f64..end as f64) as u64;
 
 				let mut scratch = [0];
 
@@ -138,7 +140,7 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 			ConfigMode::ShuffleBit(_) |
 			ConfigMode::ShuffleSet(_) |
 			ConfigMode::ShuffleInc(_) => {
-				let offset = rng.range(beg as f64, end as f64) as u64;
+				let offset = rng.random_range(beg as f64..end as f64) as u64;
 
 				let mut scratch = [0];
 
@@ -156,7 +158,7 @@ fn poke(rng: &mut lykoi_data::rng::XorShift64, path: &Path, config: &Config) {
 						data = data.wrapping_add(x);
 					}
 					ConfigMode::ShuffleBit(None) => {
-						let select_bit = rng.range(0.0, 8.0) as u8;
+						let select_bit = rng.random_range(0.0..8.0) as u8;
 						let bit = 1u8 << select_bit;
 						data ^= bit;
 					}
@@ -354,7 +356,7 @@ fn main() {
 		return;
 	}
 
-	let mut rng = lykoi_data::rng::XorShift64::new(getrandom::u64().unwrap_or_else(|_| goreutils::util::gen_time()));
+	let mut rng = prrng::XorShift64::new(getrandom::u64().unwrap_or_else(|_| goreutils::util::gen_time()));
 
 
 	if paths.is_empty() {

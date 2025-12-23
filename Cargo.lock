@@ -9,12 +9,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e49015e9bcf19ab770c44d0b084814c444d6f90a3a0bff1c9d670971e47de3ea"
 
 [[package]]
-name = "autocfg"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
-
-[[package]]
 name = "cfg-if"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -38,7 +32,7 @@ version = "0.1.0"
 dependencies = [
  "argv",
  "getrandom",
- "lykoi_data",
+ "prrng",
  "salps",
 ]
 
@@ -49,22 +43,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58f929b4d672ea937a23a1ab494143d968337a5f47e56d0815df1e0890ddf174"
 
 [[package]]
-name = "lykoi_data"
-version = "0.6.0"
+name = "prrng"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28c9cf55022fb678ad5fbccdc8d920429a55308fa5cfb4537ac0569f3cd05eb6"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
-name = "num-traits"
-version = "0.2.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
-dependencies = [
- "autocfg",
-]
+checksum = "f187af6d6b79ad13cde6d10b0649d1072fcc633e8b35aad43c2695b1a26d0599"
 
 [[package]]
 name = "r-efi"
