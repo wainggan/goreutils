@@ -44,9 +44,9 @@ checksum = "58f929b4d672ea937a23a1ab494143d968337a5f47e56d0815df1e0890ddf174"
 
 [[package]]
 name = "prrng"
-version = "0.2.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f187af6d6b79ad13cde6d10b0649d1072fcc633e8b35aad43c2695b1a26d0599"
+checksum = "d5f6c31fcc6b4f6f1ed281d591e3f6d7d07efea2ecb31f757ee1a527f457d88b"
 
 [[package]]
 name = "r-efi"
