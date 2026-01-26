@@ -5,15 +5,18 @@ struct Config {
 	help: bool,
 	version: bool,
 	output: Option<String>,
+	one: bool,
 	size: (u32, u32),
+
 }
-#[allow(clippy::derivable_impls)]
+
 impl Default for Config {
 	fn default() -> Self {
 		Self {
 			help: false,
 			version: false,
 			output: None,
+			one: false,
 			size: (64, 64),
 		}
 	}
@@ -34,6 +37,10 @@ const RULES: &[args::Rule<Config>] = &[
 			return Err(());
 		};
 		c.output = Some(x.to_string());
+		Ok(())
+	}),
+	("one", None, &|c, _, _| {
+		c.one = true;
 		Ok(())
 	}),
 	("size", Some('d'), &|c, a, e| {
@@ -63,9 +70,11 @@ const RULES: &[args::Rule<Config>] = &[
 
 const HELP: &str = "\
 Usage: kibt [OPTION]...
-Scripting.
+Image scripting.
   -o, --output [x]  save output image to x (default=output.bmp)
-  -d, -size [x] [y] set canvas size to width=x and height=y
+      --one         outputs a single execution to standard out
+  -d, --size [x] [y]
+                    set canvas size to width=x and height=y
                     (default=64 64)
       --help        display this help and exit
       --version     display version information and exit
@@ -92,10 +101,21 @@ enum Kind {
 	Eof,
 	Error(TokenError),
 	Whitespace,
+	
 	LParen,
 	RParen,
 	LBrace,
 	RBrace,
+
+	Let,
+	Set,
+	If,
+	Else,
+	Loop,
+	Break,
+	Continue,
+	
+	None,
 	Int,
 	Flt,
 	Ident,
@@ -144,18 +164,23 @@ impl<'a> Tokenize<'a> {
 		self.offset = self.iter.as_str().len();
 	}
 
-	fn token_emit(&self, kind: Kind) -> Token<'a> {
+	fn token_src(&self) -> &'a str {
 		let start = self.token_pos();
 		let end = start + self.token_len();
+		&self.src[start..end]
+	}
+
+	fn token_emit(&self, kind: Kind, src: &'a str) -> Token<'a> {
 		Token {
 			kind,
-			data: &self.src[start..end],
+			data: src,
 		}
 	}
 
 	fn bump(&mut self) -> Option<char> {
 		self.iter.next()
 	}
+
 	fn bump_while(&mut self, mut predicate: impl FnMut(char) -> bool) {
 		while let Some(c) = self.peek_one() && predicate(c) && !self.at_end() {
 			self.bump();
@@ -181,9 +206,19 @@ impl<'a> Tokenize<'a> {
 			}
 			c if c.is_alphabetic() => {
 				self.bump_while(|x| x.is_alphanumeric() || x == '_');
-				Kind::Ident
+				match self.token_src() {
+					"let" => Kind::Let,
+					"set" => Kind::Set,
+					"if" => Kind::If,
+					"else" => Kind::Else,
+					"loop" => Kind::Loop,
+					"break" => Kind::Break,
+					"continue" => Kind::Continue,
+					"none" => Kind::None,
+					_ => Kind::Ident,
+				}
 			}
-			c if c.is_numeric() => {
+			c if c.is_numeric() || c == '-' => {
 				self.bump_while(|x| x.is_numeric());
 				if matches!(self.peek_one(), Some(x) if x == '.') {
 					self.bump();
@@ -196,7 +231,7 @@ impl<'a> Tokenize<'a> {
 			_ => Kind::Error(TokenError::UnknownChar),
 		};
 
-		let o = self.token_emit(k);
+		let o = self.token_emit(k, self.token_src());
 		self.token_reset();
 		o
 	}
@@ -216,28 +251,54 @@ impl<'a> Iterator for Tokenize<'a> {
 }
 
 mod ops {
+	/// do nothing
 	pub const NOP: u8 = 0x00;
+	/// consume top value in stack
 	pub const POP: u8 = 0x01;
+	/// consume 
 	pub const GET: u8 = 0x02;
 	pub const SET: u8 = 0x03;
-	pub const SWAP: u8 = 0x04;
-	pub const CALL: u8 = 0x05;
-	pub const LIT_INT: u8 = 0x10;
-	pub const LIT_FLT: u8 = 0x11;
-	pub const LIT_NONE: u8 = 0x12;
-}
 
-struct Globals<T> {
-	values: Vec<(&'static str, Value)>,
-	native: Vec<fn(&mut dyn FnMut() -> Option<Value>, &T) -> Value>,
-}
-impl<T> Globals<T> {
-	fn new(values: Vec<(&'static str, Value)>, native: Vec<fn(&mut dyn FnMut() -> Option<Value>, &T) -> Value>) -> Self {
-		Self {
-			values,
-			native,
-		}
-	}
+	pub const SWAP: u8 = 0x04;
+	
+	/// - operand
+	///     - `target`: `[u8; 4]`
+	/// - consume
+	///     1. `condition`
+	/// 
+	/// jump to an address.
+	/// 
+	/// - if `condition` is a `Value::Int`
+	///     - if it is `!= 0`, then
+	///       this does nothing.
+	///     - else, this sets the `pc` to the
+	///       address in `target`.
+	/// - else, this traps.
+	/// 
+	pub const JUMP: u8 = 0x05;
+	
+	/// - operand
+	///     - `arg_count`: `[u8; 1]`
+	/// - consume
+	///     1. `arg`
+	/// 
+	/// attempt to call `arg` as a function.
+	pub const CALL: u8 = 0x06;
+	
+	/// - operand
+	///     - `x`: `[u8; 4]`
+	/// 
+	/// pushes `x` onto the stack as a `Value::Int`
+	pub const LIT_INT: u8 = 0x10;
+
+	/// - operand
+	///     - `x`: `[u8; 4]`
+	/// 
+	/// pushes `x` onto the stack as a `Value::Flt`
+	pub const LIT_FLT: u8 = 0x11;
+
+	/// pushes a `Value::None` onto the stack
+	pub const LIT_NONE: u8 = 0x12;
 }
 
 struct Compile<'a, I: Iterator<Item = Token<'a>>> {
@@ -246,8 +307,10 @@ struct Compile<'a, I: Iterator<Item = Token<'a>>> {
 	scope_depth: u32,
 }
 impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
-	fn new<T>(tokens: I, globals: &Globals<T>) -> Self {
-		let env = globals.values.iter().map(|x| (x.0, 0)).collect();
+	fn new<Env>(tokens: I, globals: &GlobalList<Env>) -> Self {
+		let env = globals.iter()
+			.map(|x| (x.0, 0))
+			.collect();
 		Self {
 			tokens: tokens.peekable(),
 			env,
@@ -264,10 +327,13 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 		}
 		None
 	}
+
+	#[expect(unused, reason = "might need later")]
 	fn crack(&mut self, mut predicate: impl FnMut(&Token<'a>) -> bool) -> Option<Token<'a>> {
 		if predicate(self.tokens.peek()?) {
 			self.tokens.next()
-		} else {
+		}
+		else {
 			None
 		}
 	}
@@ -297,13 +363,13 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 			// returning here should be fine, so long as no other code tries to handle the error
 			// todo: that sucks though
 
-			if self.crack(|x| matches!((&x.kind, x.data), (&Kind::Ident, "let"))).is_some() {
+			if self.check(&[Kind::Let]).is_some() {
 				let name = self.check(&[Kind::Ident]).ok_or_else(|| "missing var name".to_string())?;
 				self.primary(bin)?;
 				self.env.push((name.data, self.scope_depth));
 				bin.push(ops::LIT_NONE);
 			}
-			else if self.crack(|x| matches!((&x.kind, x.data), (&Kind::Ident, "set"))).is_some() {
+			else if self.check(&[Kind::Set]).is_some() {
 				let name = self.check(&[Kind::Ident]).ok_or_else(|| "missing var name".to_string())?;
 
 				self.primary(bin)?;
@@ -370,6 +436,58 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 			return self.block(bin);
 		}
 
+		if self.check(&[Kind::If]).is_some() {
+			// compile condition
+			self.primary(bin)?;
+
+			// use the result of the condition to jump if 'false'
+			bin.push(ops::JUMP);
+
+			// jump takes an operand of where to jump to.
+			// we don't know where to jump yet, so we keep an index
+			// to the operand to fill in later.
+			// we want to jump to the 'else' branch.
+			let offset_else = bin.len();
+			bin.extend_from_slice(&0u32.to_be_bytes());
+
+			// compile 'then' branch
+			self.primary(bin)?;
+
+			// unconditional jump to the end
+			bin.push(ops::LIT_INT);
+			bin.extend_from_slice(&0u32.to_be_bytes());
+			bin.push(ops::JUMP);
+
+			// fill in later again
+			// this jump wants to reach the end.
+			let offset_complete = bin.len();
+			bin.extend_from_slice(&0u32.to_be_bytes());
+
+			// parse 'else' keyword
+			self.check(&[Kind::Else]).ok_or_else(|| "missing 'else' branch".to_string())?;
+
+			// we are now at the 'else' branch, which
+			// `offset_else` wants to target.
+			let target_else = bin.len() as u32;
+
+			// compile 'else' branch
+			self.primary(bin)?;
+
+			// we are now at the end, which `offset_complete`
+			// wants to target.
+			let target_complete = bin.len() as u32;
+
+			bin[offset_else..offset_else + 4].swap_with_slice(&mut target_else.to_be_bytes());
+			bin[offset_complete..offset_complete + 4].swap_with_slice(&mut target_complete.to_be_bytes());
+
+			return Ok(());
+		}
+
+		if self.check(&[Kind::None]).is_some() {
+			bin.push(ops::LIT_NONE);
+			return Ok(());
+		}
+
 		if let Some(x) = self.check(&[Kind::Int]) {
 			let a = x.data.parse::<i32>().map_err(|_| "number parse error".to_string())?;
 			bin.push(ops::LIT_INT);
@@ -383,10 +501,6 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 			bin.extend_from_slice(&a.to_be_bytes());
 			return Ok(());
 		}
-
-		// if let Some(x) = self.check(&[Kind::String]) {
-			//return Ok(Value::Str(x.data.to_string()));
-		// }
 
 		if let Some(x) = self.check(&[Kind::Ident]) {
 			let pos = self.env.iter()
@@ -406,31 +520,83 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
-enum Value {
+type NativeFn<Env> = fn(&mut dyn FnMut() -> Option<Value<Env>>, &Env) -> Value<Env>;
+
+#[derive(Debug)]
+enum Value<Env> {
 	None,
 	Int(i32),
 	Flt(f32),
 	// FUCK
 	// todo: OPTIMIZE
-	List(Vec<Value>),
+	List(Vec<Value<Env>>),
+	#[expect(unused, reason = "will use later")]
 	Fn(u32),
+	NativeFn(NativeFn<Env>),
 }
 
-struct Interpret<'a, 'b, 'c, T> {
-	pc: usize,
-	stack: Vec<Value>,
-	native: &'a Vec<fn(&mut dyn FnMut() -> Option<Value>, &T) -> Value>,
-	bin: &'c Vec<u8>,
-	env: &'b T,
+impl<Env> Clone for Value<Env> {
+	fn clone(&self) -> Self {
+		match self {
+			Value::None => Value::None,
+			Value::Int(x) => Value::Int(*x),
+			Value::Flt(x) => Value::Flt(*x),
+			Value::List(x) => Value::List(x.clone()),
+			Value::Fn(x) => Value::Fn(*x),
+			Value::NativeFn(x) => Value::NativeFn(*x),
+		}
+	}
 }
-impl<'a, 'b, 'c, T> Interpret<'a, 'b, 'c, T> {
-	fn new(bin: &'c Vec<u8>, globals: &'a Globals<T>, env: &'b T) -> Self {
-		let stack = globals.values.iter().map(|x| x.1.clone()).collect();
+
+impl<Env: std::fmt::Debug> PartialEq for Value<Env> {
+	fn eq(&self, other: &Self) -> bool {
+		match (self, other) {
+			(Value::None, Value::None) => true,
+			(Value::Int(x), Value::Int(y)) => x == y,
+			(Value::Flt(x), Value::Flt(y)) => x == y,
+			(Value::List(x), Value::List(y)) => x == y,
+			(Value::Fn(_), Value::Fn(_)) => false,
+			(Value::NativeFn(_), Value::NativeFn(_)) => false,
+			_ => false,
+		}
+	}
+}
+
+impl<Env> std::fmt::Display for Value<Env> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Value::None => write!(f, "none"),
+			Value::Int(x) => write!(f, "{}", x),
+			Value::Flt(x) => write!(f, "{}", x),
+			Value::List(x) => {
+				write!(f, "[ ")?;
+				for y in x.iter() {
+					write!(f, "{} ", y)?;
+				}
+				write!(f, "]")
+			},
+			Value::Fn(_) => write!(f, "<function>"),
+			Value::NativeFn(_) => write!(f, "<native function>"),
+		}
+	}
+}
+
+
+type GlobalList<Env> = [(&'static str, Value<Env>)];
+
+struct Interpret<'a, 'b, Env> {
+	pc: usize,
+	stack: Vec<Value<Env>>,
+	bin: &'b Vec<u8>,
+	env: &'a Env,
+}
+
+impl<'a, 'b, Env: std::fmt::Debug> Interpret<'a, 'b, Env> {
+	fn new(bin: &'b Vec<u8>, globals: &GlobalList<Env>, env: &'a Env) -> Self {
+		let stack = globals.iter().map(|x| x.1.clone()).collect();
 		Self {
 			bin,
 			stack,
-			native: &globals.native,
 			pc: 0,
 			env,
 		}
@@ -486,6 +652,17 @@ impl<'a, 'b, 'c, T> Interpret<'a, 'b, 'c, T> {
 				let offset = self.byte();
 				self.stack[offset as usize] = self.stack.pop().unwrap();
 			}
+			ops::JUMP => {
+				let offset = self.word_i32().cast_unsigned();
+				let condition = self.stack.pop();
+				let value = match condition {
+					Some(Value::Int(x)) => x == 0,
+					_ => panic!(),
+				};
+				if value {
+					self.pc = offset as usize;
+				}
+			}
 			ops::LIT_INT => {
 				let data = self.word_i32();
 				self.stack.push(Value::Int(data));
@@ -501,17 +678,18 @@ impl<'a, 'b, 'c, T> Interpret<'a, 'b, 'c, T> {
 				let cmd = self.stack.pop().unwrap();
 				let mut count = self.byte();
 				match cmd {
-					Value::Fn(x) => {
-						let f = self.native[x as usize];
-						let out = f(&mut || {
+					Value::NativeFn(x) => {
+						let out = x(&mut || {
 							if count > 0 {
 								count -= 1;
 								Some(self.stack.remove(self.stack.len() - count as usize - 1))
-							} else {
+							}
+							else {
 								None
 							}
 						}, self.env);
 						while count > 0 {
+							self.stack.pop();
 							count -= 1;
 						}
 						self.stack.push(out);
@@ -527,6 +705,226 @@ impl<'a, 'b, 'c, T> Interpret<'a, 'b, 'c, T> {
 	}
 }
 
+#[derive(Debug, Clone)]
+struct Environment {
+	uv: (f32, f32),
+	px: (u32, u32),
+	size: (u32, u32),
+}
+
+static GLOBALS: &GlobalList<Environment> = &[
+	("print", Value::NativeFn(
+		|p, _| {
+			while let Some(value) = p() {
+				println!("{}", value);
+			}
+			Value::None
+		}
+	)),
+
+	("int", Value::NativeFn(
+		|p, _| {
+			match p().unwrap_or(Value::None) {
+				Value::Int(x) => Value::Int(x),
+				Value::Flt(x) => Value::Int(x as i32),
+				_ => Value::Int(0),
+			}
+		}
+	)),
+
+	("flt", Value::NativeFn(
+		|p, _| {
+			match p().unwrap_or(Value::None) {
+				Value::Flt(x) => Value::Flt(x),
+				Value::Int(x) => Value::Flt(x as f32),
+				_ => Value::Int(0),
+			}
+		}
+	)),
+
+	("not", Value::NativeFn(
+		|p, _| {
+			let value = p().unwrap_or(Value::None);
+			Value::Int(match value {
+				Value::Int(x) => (x == 0) as i32,
+				_ => 0
+			})
+		}
+	)),
+
+	("neg", Value::NativeFn(
+		|p, _| {
+			let value = p().unwrap_or(Value::None);
+			match value {
+				Value::Int(x) => Value::Int(-x),
+				Value::Flt(x) => Value::Flt(-x),
+				x => x,
+			}
+		}
+	)),
+
+	("cmp", Value::NativeFn(
+		|p, _| {
+			let mut acc = p().unwrap_or(Value::None);
+			let mut check = true;
+			loop {
+				let n = p().unwrap_or(Value::None);
+				if matches!(n, Value::None) {
+					break;
+				}
+				check = check && match (&acc, &n) {
+					(Value::Int(x), Value::Int(y)) => x < y,
+					(Value::Flt(x), Value::Flt(y)) => x < y,
+					_ => false,
+				};
+				if !check {
+					break;
+				}
+				acc = n;
+			}
+			Value::Int(if check { 1 } else { 0 })
+		}
+	)),
+	
+	("eq", Value::NativeFn(
+		|p, _| {
+			let acc = p().unwrap_or(Value::None);
+			let mut check = true;
+			loop {
+				let n = p().unwrap_or(Value::None);
+				if matches!(n, Value::None) {
+					break;
+				}
+				check = check && acc == n;
+			}
+			Value::Int(if check { 1 } else { 0 })
+		}
+	)),
+
+	("add", Value::NativeFn(
+		|p, _| {
+			let mut acc = Value::None;
+			loop {
+				let n = p().unwrap_or(Value::None);
+				if matches!(n, Value::None) {
+					break;
+				}
+				acc = match (acc, n) {
+					(Value::None, y) => y,
+					(Value::Int(x), Value::Int(y)) => Value::Int(x.wrapping_add(y)),
+					(Value::Flt(x), Value::Flt(y)) => Value::Flt(x + y),
+					_ => Value::None,
+				}
+			}
+			acc
+		}
+	)),
+
+	("sub", Value::NativeFn(
+		|p, _| {
+			let mut acc = Value::None;
+			loop {
+				let n = p().unwrap_or(Value::None);
+				if matches!(n, Value::None) {
+					break;
+				}
+				acc = match (acc, n) {
+					(Value::None, y) => y,
+					(Value::Int(x), Value::Int(y)) => Value::Int(x.wrapping_sub(y)),
+					(Value::Flt(x), Value::Flt(y)) => Value::Flt(x - y),
+					_ => Value::None,
+				}
+			}
+			acc
+		}
+	)),
+
+	("mul", Value::NativeFn(
+		|p, _| {
+			let mut acc = Value::None;
+			loop {
+				let n = p().unwrap_or(Value::None);
+				if matches!(n, Value::None) {
+					break;
+				}
+				acc = match (acc, n) {
+					(Value::None, y) => y,
+					(Value::Int(x), Value::Int(y)) => Value::Int(x.wrapping_mul(y)),
+					(Value::Flt(x), Value::Flt(y)) => Value::Flt(x * y),
+					_ => Value::None,
+				}
+			}
+			acc
+		}
+	)),
+
+	("div", Value::NativeFn(
+		|p, _| {
+			let mut acc = Value::None;
+			loop {
+				let n = p().unwrap_or(Value::None);
+				if matches!(n, Value::None) {
+					break;
+				}
+				acc = match (acc, n) {
+					(Value::None, y) => y,
+					(Value::Int(x), Value::Int(y)) => Value::Int(x.wrapping_div(y)),
+					(Value::Flt(x), Value::Flt(y)) => Value::Flt(x / y),
+					_ => Value::None,
+				}
+			}
+			acc
+		}
+	)),
+
+	("list", Value::NativeFn(
+		|p, _| {
+			let mut vec = vec![];
+			while let Some(value) = p() {
+				vec.push(value);
+			}
+			Value::List(vec)
+		}
+	)),
+
+	("uv_x", Value::NativeFn(
+		|_, env| {
+			Value::Flt(env.uv.0)
+		}
+	)),
+
+	("uv_y", Value::NativeFn(
+		|_, env| {
+			Value::Flt(env.uv.1)
+		}
+	)),
+
+	("px_x", Value::NativeFn(
+		|_, env| {
+			Value::Int(env.px.0 as i32)
+		}
+	)),
+
+	("px_y", Value::NativeFn(
+		|_, env| {
+			Value::Int(env.px.1 as i32)
+		}
+	)),
+
+	("width", Value::NativeFn(
+		|_, env| {
+			Value::Int(env.size.0 as i32)
+		}
+	)),
+
+	("height", Value::NativeFn(
+		|_, env| {
+			Value::Int(env.size.1 as i32)
+		}
+	)),
+
+	("pi", Value::Flt(core::f32::consts::PI)),
+];
 
 
 
@@ -552,265 +950,147 @@ fn main() {
 		return;
 	}
 
-	struct Env {
-		uv: (f32, f32),
-		px: (u32, u32),
-		size: (u32, u32),
-	}
-
-	let globals = Globals::<Env>::new({
-		let mut vec = vec![];
-
-		vec.push(("pi", Value::Flt(core::f32::consts::PI)));
-		vec.push(("none", Value::None));
-
-		vec.push(("print", Value::Fn(0)));
-		vec.push(("int", Value::Fn(1)));
-		vec.push(("flt", Value::Fn(2)));
-		vec.push(("add", Value::Fn(3)));
-		vec.push(("sub", Value::Fn(4)));
-		vec.push(("mul", Value::Fn(5)));
-		vec.push(("div", Value::Fn(6)));
-		vec.push(("list", Value::Fn(7)));
-		vec.push(("uv_x", Value::Fn(8)));
-		vec.push(("uv_y", Value::Fn(9)));
-		vec.push(("px_x", Value::Fn(10)));
-		vec.push(("px_y", Value::Fn(11)));
-		vec.push(("width", Value::Fn(12)));
-		vec.push(("height", Value::Fn(13)));
-
-		vec
-	}, vec![
-		|p, _| {
-			while let Some(value) = p() {
-				println!("{:?}", value);
-			}
-			Value::None
-		},
-		|p, _| {
-			match p().unwrap_or(Value::None) {
-				Value::Int(x) => Value::Int(x),
-				Value::Flt(x) => Value::Int(x as i32),
-				_ => Value::Int(0),
-			}
-		},
-		|p, _| {
-			match p().unwrap_or(Value::None) {
-				Value::Flt(x) => Value::Flt(x),
-				Value::Int(x) => Value::Flt(x as f32),
-				_ => Value::Int(0),
-			}
-		},
-		|p, _| {
-			let mut acc = Value::None;
-			loop {
-				let n = p().unwrap_or(Value::None);
-				if matches!(n, Value::None) {
-					break;
-				}
-				acc = match (acc, n) {
-					(Value::None, y) => y,
-					(Value::Int(x), Value::Int(y)) => Value::Int(x.wrapping_add(y)),
-					(Value::Flt(x), Value::Flt(y)) => Value::Flt(x + y),
-					_ => Value::None,
-				}
-			}
-			acc
-		},
-		|p, _| {
-			let mut acc = Value::None;
-			loop {
-				let n = p().unwrap_or(Value::None);
-				if matches!(n, Value::None) {
-					break;
-				}
-				acc = match (acc, n) {
-					(Value::None, y) => y,
-					(Value::Int(x), Value::Int(y)) => Value::Int(x.wrapping_sub(y)),
-					(Value::Flt(x), Value::Flt(y)) => Value::Flt(x - y),
-					_ => Value::None,
-				}
-			}
-			acc
-		},
-		|p, _| {
-			let mut acc = Value::None;
-			loop {
-				let n = p().unwrap_or(Value::None);
-				if matches!(n, Value::None) {
-					break;
-				}
-				acc = match (acc, n) {
-					(Value::None, y) => y,
-					(Value::Int(x), Value::Int(y)) => Value::Int(x.wrapping_mul(y)),
-					(Value::Flt(x), Value::Flt(y)) => Value::Flt(x * y),
-					_ => Value::None,
-				}
-			}
-			acc
-		},
-		|p, _| {
-			let mut acc = Value::None;
-			loop {
-				let n = p().unwrap_or(Value::None);
-				if matches!(n, Value::None) {
-					break;
-				}
-				acc = match (acc, n) {
-					(Value::None, y) => y,
-					(Value::Int(x), Value::Int(y)) => Value::Int(x.wrapping_div(y)),
-					(Value::Flt(x), Value::Flt(y)) => Value::Flt(x / y),
-					_ => Value::None,
-				}
-			}
-			acc
-		},
-		|p, _| {
-			let mut vec = vec![];
-			while let Some(value) = p() {
-				vec.push(value);
-			}
-			Value::List(vec)
-		},
-		|_, env| {
-			Value::Flt(env.uv.0)
-		},
-		|_, env| {
-			Value::Flt(env.uv.1)
-		},
-		|_, env| {
-			Value::Int(env.px.0 as i32)
-		},
-		|_, env| {
-			Value::Int(env.px.1 as i32)
-		},
-		|_, env| {
-			Value::Int(env.size.0 as i32)
-		},
-		|_, env| {
-			Value::Int(env.size.1 as i32)
-		},
-	]);
-
-	let mut canvas = vec![(0u8, 0u8, 0u8); (config.size.0 * config.size.1) as usize];
-
-	for src in value {
-		let tokens = crate::Tokenize::new(&src).collect::<Vec<_>>();
-
-		let bin = crate::Compile::new(tokens.into_iter(), &globals).parse().unwrap();
-
-		for (i, poke) in canvas.iter_mut().enumerate() {
-			let px = (i as u32 % config.size.0, i as u32 / config.size.0);
-			let env = Env {
-				uv: (px.0 as f32 / config.size.0 as f32, px.1 as f32 / config.size.1 as f32),
-				px: (px.0, px.1),
-				size: (config.size.0, config.size.1),
+	if config.one {
+		for src in value {
+			let env = Environment {
+				uv: (0.0, 0.0),
+				px: (0, 0),
+				size: (1, 1),
 			};
 
-			let mut vm = crate::Interpret::new(&bin, &globals, &env);
+			let tokens = crate::Tokenize::new(&src);
+	
+			let bin = crate::Compile::new(tokens, GLOBALS).parse().unwrap();
+
+			let mut vm = crate::Interpret::new(&bin, GLOBALS, &env);
 			while !vm.end() {
 				vm.tick();
 			}
 
 			let out = vm.stack.pop().unwrap_or(Value::None);
-			
-			let map = |x: Value| match x {
-				Value::Int(x) => x.clamp(0, 255) as u8,
-				Value::Flt(x) => (x.clamp(0.0, 1.0) * 256.0) as u8,
-				_ => 0,
-			};
 
-			let color = match out {
-				Value::List(mut vec) => {
-					if vec.len() != 3 {
-						(0, 0, 0)
-					} else {
-						let b = vec.pop().unwrap();
-						let g = vec.pop().unwrap();
-						let r = vec.pop().unwrap();
-						(map(r), map(g), map(b))
-					}
-				}
-				_ => {
-					let x = map(out);
-					(x, x, x)
-				}
-			};
-
-			*poke = color;
+			println!("{}", out);
 		}
 	}
+	else {
+		let mut canvas = vec![(0u8, 0u8, 0u8); (config.size.0 * config.size.1) as usize];
 
-	let mut buffer = vec![];
+		for src in value {
+			let tokens = crate::Tokenize::new(&src);
+			let bin = crate::Compile::new(tokens.into_iter(), GLOBALS).parse().unwrap();
 
-	// https://www.ece.ualberta.ca/~elliott/ee552/studentAppNotes/2003_w/misc/bmp_file_format/bmp_file_format.htm
+			for (i, poke) in canvas.iter_mut().enumerate() {
+				let px = (i as u32 % config.size.0, i as u32 / config.size.0);
+				let env = Environment {
+					uv: (px.0 as f32 / config.size.0 as f32, px.1 as f32 / config.size.1 as f32),
+					px: (px.0, px.1),
+					size: (config.size.0, config.size.1),
+				};
 
-	// magic
-	buffer.extend(b"BM");
-	// size (todo)
-	buffer.extend(&[0, 0, 0, 0]);
-	// reserved
-	buffer.extend(&0u32.to_le_bytes());
-	// offset
-	buffer.extend(&(14u32 + 40).to_le_bytes());
+				let mut vm = crate::Interpret::new(&bin, GLOBALS, &env);
+				while !vm.end() {
+					vm.tick();
+				}
 
-	// info header size
-	buffer.extend(&40u32.to_le_bytes());
-	// bitmap width
-	buffer.extend(&config.size.0.to_le_bytes());
-	// bitmap height
-	buffer.extend(&config.size.1.to_le_bytes());
-	// planes
-	buffer.extend(&1u16.to_le_bytes());
-	// bits per pixel
-	buffer.extend(&24u16.to_le_bytes());
-	// compression
-	buffer.extend(&0u32.to_le_bytes());
-	// image size
-	buffer.extend(&0u32.to_le_bytes());
-	// xp/m
-	buffer.extend(&0u32.to_le_bytes());
-	// yp/m
-	buffer.extend(&0u32.to_le_bytes());
-	// colors used
-	buffer.extend(&(0xffu32 * 0xff * 0xff).to_le_bytes());
-	// important colors
-	buffer.extend(&0u32.to_le_bytes());
+				let out = vm.stack.pop().unwrap_or(Value::None);
+				
+				let map = |x| match x {
+					Value::Int(x) => x.clamp(0, 255) as u8,
+					Value::Flt(x) => (x.clamp(0.0, 1.0) * 256.0) as u8,
+					_ => 0,
+				};
 
-	let mut y = config.size.1;
-	while y > 0 {
-		y -= 1;
+				let color = match out {
+					Value::List(mut vec) => {
+						if vec.len() != 3 {
+							(0, 0, 0)
+						} else {
+							let b = vec.pop().unwrap();
+							let g = vec.pop().unwrap();
+							let r = vec.pop().unwrap();
+							(map(r), map(g), map(b))
+						}
+					}
+					_ => {
+						let x = map(out);
+						(x, x, x)
+					}
+				};
 
-		let mut x = 0;
-		while x < config.size.0 {
-			let i = x + y * config.size.0;
+				*poke = color;
+			}
+		}
 
-			let c = &canvas[i as usize];
+		let mut buffer = vec![];
 
-			buffer.extend(&[c.2, c.1, c.0]);
+		// https://www.ece.ualberta.ca/~elliott/ee552/studentAppNotes/2003_w/misc/bmp_file_format/bmp_file_format.htm
 
-			x += 1;
+		// magic
+		buffer.extend(b"BM");
+		// size (todo)
+		buffer.extend(&[0, 0, 0, 0]);
+		// reserved
+		buffer.extend(&0u32.to_le_bytes());
+		// offset
+		buffer.extend(&(14u32 + 40).to_le_bytes());
 
-			if x >= config.size.0 {
-				let fold = config.size.0 & 0b11;
-				for _ in 0..fold {
-					buffer.push(0);
+		// info header size
+		buffer.extend(&40u32.to_le_bytes());
+		// bitmap width
+		buffer.extend(&config.size.0.to_le_bytes());
+		// bitmap height
+		buffer.extend(&config.size.1.to_le_bytes());
+		// planes
+		buffer.extend(&1u16.to_le_bytes());
+		// bits per pixel
+		buffer.extend(&24u16.to_le_bytes());
+		// compression
+		buffer.extend(&0u32.to_le_bytes());
+		// image size
+		buffer.extend(&0u32.to_le_bytes());
+		// xp/m
+		buffer.extend(&0u32.to_le_bytes());
+		// yp/m
+		buffer.extend(&0u32.to_le_bytes());
+		// colors used
+		buffer.extend(&(0xffu32 * 0xff * 0xff).to_le_bytes());
+		// important colors
+		buffer.extend(&0u32.to_le_bytes());
+
+		let mut y = config.size.1;
+		while y > 0 {
+			y -= 1;
+
+			let mut x = 0;
+			while x < config.size.0 {
+				let i = x + y * config.size.0;
+
+				let c = &canvas[i as usize];
+
+				buffer.extend(&[c.2, c.1, c.0]);
+
+				x += 1;
+
+				if x >= config.size.0 {
+					let fold = config.size.0 & 0b11;
+					buffer.extend(std::iter::repeat_n(0, fold as usize));
 				}
 			}
 		}
-	}
 
-	std::fs::write(
-		config.output.as_deref()
-			.unwrap_or("output.bmp"),
-		&buffer
-	).unwrap();
+		std::fs::write(
+			config.output.as_deref()
+				.unwrap_or("output.bmp"),
+			&buffer
+		).unwrap();
+	}
 }
 
 
 #[cfg(test)]
 mod test {
     use crate::{Token, Kind};
+
 	#[test]
 	fn test_tokens() {
 		let src = "(0 0.0 test) (0)";
@@ -837,7 +1117,7 @@ mod test {
 		let tokens = crate::Tokenize::new(src).collect::<Vec<_>>();
 		println!("{:?}", tokens);
 
-		let globals = crate::Globals::new(vec![], vec![]);
+		let globals = [];
 
 		let bin = crate::Compile::new(tokens.into_iter(), &globals).parse().unwrap();
 
@@ -867,22 +1147,30 @@ mod test {
 		let tokens = crate::Tokenize::new(src).collect::<Vec<_>>();
 		println!("{:?}", tokens);
 
-		let globals = crate::Globals::new(vec![], vec![]);
+		let globals = [];
 
 		let bin = crate::Compile::new(tokens.into_iter(), &globals).parse().unwrap();
 
 		assert_eq!(&bin, &[
 			crate::ops::LIT_INT,
 			0, 0, 0, 1,
+			crate::ops::LIT_NONE,
+			crate::ops::POP,
+
 			crate::ops::LIT_INT,
 			0, 0, 0, 2,
+			crate::ops::LIT_NONE,
+			crate::ops::POP,
+			
 			crate::ops::GET,
 			0,
 			crate::ops::POP,
+
 			crate::ops::GET,
 			1,
 			crate::ops::SWAP,
 			crate::ops::POP,
+
 			crate::ops::SWAP,
 			crate::ops::POP,
 		]);
@@ -890,7 +1178,11 @@ mod test {
 		let mut interpret = crate::Interpret::new(&bin, &globals, &());
 
 		interpret.tick();
+		interpret.tick();
+		interpret.tick();
 		assert_eq!(interpret.stack, vec![crate::Value::Int(1)]);
+		interpret.tick();
+		interpret.tick();
 		interpret.tick();
 		assert_eq!(interpret.stack, vec![crate::Value::Int(1), crate::Value::Int(2)]);
 		interpret.tick();
