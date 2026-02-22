@@ -16,6 +16,12 @@ pub enum TokenKind {
 	LBrace,
 	RBrace,
 
+	Add,
+	Sub,
+	Mul,
+	Div,
+	Rem,
+
 	Let,
 	Set,
 	If,
@@ -28,7 +34,7 @@ pub enum TokenKind {
 	Int,
 	Flt,
 	Ident,
-	// String,
+	String,
 }
 
 #[derive(Debug, PartialEq)]
