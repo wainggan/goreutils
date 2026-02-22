@@ -252,11 +252,27 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 			return Ok(());
 		}
 
-		if let Some(x) = self.check(&[TokenKind::Ident]) {
+		if let Some(x) = self.check(&[
+			TokenKind::Ident,
+			TokenKind::Add,
+			TokenKind::Sub,
+			TokenKind::Mul,
+			TokenKind::Div,
+			TokenKind::Rem,
+		]) {
+			let name = match x.kind() {
+				TokenKind::Add => "add",
+				TokenKind::Sub => "sub",
+				TokenKind::Mul => "mul",
+				TokenKind::Div => "div",
+				TokenKind::Rem => "rem",
+				_ => x.src(),
+			};
+
 			let pos = self.env.iter()
 				.zip(0..self.env.len())
 				.rev()
-				.find(|y| y.0.0 == x.src())
+				.find(|y| y.0.0 == name)
 				.map(|y| y.1)
 				.ok_or_else(|| format!("unknown variable {}", x.src()))?;
 

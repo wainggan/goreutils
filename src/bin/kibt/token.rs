@@ -67,6 +67,13 @@ impl<'a> Tokenize<'a> {
 			')' => TokenKind::RParen,
 			'{' => TokenKind::LBrace,
 			'}' => TokenKind::RBrace,
+
+			'+' => TokenKind::Add,
+			'-' => TokenKind::Sub,
+			'*' => TokenKind::Mul,
+			'/' => TokenKind::Div,
+			'%' => TokenKind::Rem,
+			
 			c if c.is_whitespace() => {
 				self.bump_while(|x| x.is_whitespace());
 				TokenKind::Whitespace
