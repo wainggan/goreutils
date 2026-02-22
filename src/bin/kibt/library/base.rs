@@ -1,27 +1,119 @@
 use crate::{libconstruct, library::Environment, types::Value};
 
-libconstruct!(lib_fn_int, Environment, |stack, _env| {
-	match stack().unwrap_or(Value::None) {
-		Value::Int(x) => Value::Int(x),
-		Value::Flt(x) => Value::Int(x as i32),
+#[inline]
+fn to_int(x: &Value) -> Value {
+	match x {
+		Value::Int(x) => Value::Int(*x),
+		Value::Flt(x) => Value::Int(*x as i32),
+		Value::Bool(x) => Value::Int(*x as i32),
 		_ => Value::Int(0),
 	}
+}
+
+#[inline]
+fn to_flt(x: &Value) -> Value {
+	match x {
+		Value::Flt(x) => Value::Flt(*x),
+		Value::Int(x) => Value::Flt(*x as f32),
+		_ => Value::Flt(0.0),
+	}
+}
+
+#[inline]
+fn to_bool(x: &Value) -> Value {
+	match x {
+		Value::Bool(x) => Value::Bool(*x),
+		Value::Flt(x) => Value::Bool(*x != 0.0),
+		Value::Int(x) => Value::Bool(*x != 0),
+		Value::None => Value::Bool(false),
+		_ => Value::Bool(true),
+	}
+}
+
+#[inline]
+fn not(x: &Value) -> Value {
+	match x {
+		Value::Bool(x) => Value::Bool(!x),
+		_ => Value::Bool(false),
+	}
+}
+
+#[inline]
+fn and(x: &Value, y: &Value) -> Value {
+	match (x, y) {
+		(Value::Bool(x), Value::Bool(y)) => Value::Bool(*x && *y),
+		_ => Value::Bool(false),
+	}
+}
+
+#[inline]
+fn xor(x: &Value, y: &Value) -> Value {
+	match (x, y) {
+		(Value::Bool(x), Value::Bool(y)) => Value::Bool(*x ^ *y),
+		_ => Value::Bool(false),
+	}
+}
+
+#[inline]
+fn or(x: &Value, y: &Value) -> Value {
+	match (x, y) {
+		(Value::Bool(x), Value::Bool(y)) => Value::Bool(*x || *y),
+		_ => Value::Bool(false),
+	}
+}
+
+#[inline]
+fn eq(x: &Value, y: &Value) -> Value {
+	Value::Bool(x == y)
+}
+
+#[inline]
+fn ne(x: &Value, y: &Value) -> Value {
+	Value::Bool(x != y)
+}
+
+#[inline]
+fn lt(x: &Value, y: &Value) -> Value {
+	match (x, y) {
+		(Value::Int(x), Value::Int(y)) => Value::Bool(*x < *y),
+		(Value::Flt(x), Value::Flt(y)) => Value::Bool(*x < *y),
+		_ => Value::Bool(false),
+	}
+}
+
+#[inline]
+fn gt(x: &Value, y: &Value) -> Value {
+	lt(y, x)
+}
+
+#[inline]
+fn lte(x: &Value, y: &Value) -> Value {
+	let a = lt(x, y);
+	match a {
+		Value::Bool(true) => eq(x, y),
+		m => m,
+	}
+}
+
+#[inline]
+fn gte(x: &Value, y: &Value) -> Value {
+	lte(y, x)
+}
+
+libconstruct!(lib_fn_int, Environment, |stack, _env| {
+	to_int(&stack().unwrap_or(Value::None))
 });
 
 libconstruct!(lib_fn_flt, Environment, |stack, _env| {
-	match stack().unwrap_or(Value::None) {
-		Value::Flt(x) => Value::Flt(x),
-		Value::Int(x) => Value::Flt(x as f32),
-		_ => Value::Flt(0.0),
-	}
+	to_flt(&stack().unwrap_or(Value::None))
+});
+
+libconstruct!(lib_fn_bool, Environment, |stack, _env| {
+	to_bool(&stack().unwrap_or(Value::None))
 });
 
 libconstruct!(lib_fn_not, Environment, |stack, _env| {
-	let value = stack().unwrap_or(Value::None);
-	Value::Int(match value {
-		Value::Int(x) => (x == 0) as i32,
-		_ => 0
-	})
+	not(&stack().unwrap_or(Value::None))
 });
 
 libconstruct!(lib_fn_neg, Environment, |stack, _env| {
@@ -33,38 +125,60 @@ libconstruct!(lib_fn_neg, Environment, |stack, _env| {
 	}
 });
 
-libconstruct!(lib_fn_cmp, Environment, |stack, _env| {
-	let mut acc = stack().unwrap_or(Value::None);
-	let mut check = true;
-	loop {
-		let n = stack().unwrap_or(Value::None);
-		if matches!(n, Value::None) {
-			break;
+macro_rules! impl_fn_cmp {
+	($fn:ident, $stack:ident) => {
+		{
+			let mut x = $stack().unwrap_or(Value::None);
+			let mut acc = Value::Bool(true);
+			loop {
+				let Some(y) = $stack() else {
+					break;
+				};
+				acc = $fn(&x, &y);
+				if let Value::Bool(false) = acc {
+					break;
+				}
+				x = y;
+			}
+			acc
 		}
-		check = check && match (&acc, &n) {
-			(Value::Int(x), Value::Int(y)) => x < y,
-			(Value::Flt(x), Value::Flt(y)) => x < y,
-			_ => false,
-		};
-		if !check {
-			break;
-		}
-		acc = n;
-	}
-	Value::Int(if check { 1 } else { 0 })
+	};
+}
+
+libconstruct!(lib_fn_or, Environment, |stack, _env| {
+	impl_fn_cmp!(or, stack)
+});
+
+libconstruct!(lib_fn_and, Environment, |stack, _env| {
+	impl_fn_cmp!(and, stack)
+});
+
+libconstruct!(lib_fn_xor, Environment, |stack, _env| {
+	impl_fn_cmp!(xor, stack)
+});
+
+libconstruct!(lib_fn_lt, Environment, |stack, _env| {
+	impl_fn_cmp!(lt, stack)
+});
+
+libconstruct!(lib_fn_gt, Environment, |stack, _env| {
+	impl_fn_cmp!(gt, stack)
+});
+
+libconstruct!(lib_fn_lte, Environment, |stack, _env| {
+	impl_fn_cmp!(lte, stack)
+});
+
+libconstruct!(lib_fn_gte, Environment, |stack, _env| {
+	impl_fn_cmp!(gte, stack)
 });
 
 libconstruct!(lib_fn_eq, Environment, |stack, _env| {
-	let acc = stack().unwrap_or(Value::None);
-	let mut check = true;
-	loop {
-		let n = stack().unwrap_or(Value::None);
-		if matches!(n, Value::None) {
-			break;
-		}
-		check = check && acc == n;
-	}
-	Value::Int(if check { 1 } else { 0 })
+	impl_fn_cmp!(eq, stack)
+});
+
+libconstruct!(lib_fn_ne, Environment, |stack, _env| {
+	impl_fn_cmp!(ne, stack)
 });
 
 libconstruct!(lib_fn_add, Environment, |stack, _env| {
@@ -180,6 +294,111 @@ libconstruct!(lib_fn_cat, Environment, |stack, _env| {
 		}
 	}
 	acc
+});
+
+libconstruct!(lib_fn_sin, Environment, |stack, _env| {
+	let Some(x) = stack() else {
+		return Value::None;
+	};
+	match x {
+		Value::Flt(x) => Value::Flt(x.sin()),
+		_ => Value::None,
+	}
+});
+
+libconstruct!(lib_fn_asin, Environment, |stack, _env| {
+	let Some(x) = stack() else {
+		return Value::None;
+	};
+	match x {
+		Value::Flt(x) => Value::Flt(x.asin()),
+		_ => Value::None,
+	}
+});
+
+libconstruct!(lib_fn_cos, Environment, |stack, _env| {
+	let Some(x) = stack() else {
+		return Value::None;
+	};
+	match x {
+		Value::Flt(x) => Value::Flt(x.cos()),
+		_ => Value::None,
+	}
+});
+
+libconstruct!(lib_fn_acos, Environment, |stack, _env| {
+	let Some(x) = stack() else {
+		return Value::None;
+	};
+	match x {
+		Value::Flt(x) => Value::Flt(x.acos()),
+		_ => Value::None,
+	}
+});
+
+libconstruct!(lib_fn_tan, Environment, |stack, _env| {
+	let Some(x) = stack() else {
+		return Value::None;
+	};
+	match x {
+		Value::Flt(x) => Value::Flt(x.tan()),
+		_ => Value::None,
+	}
+});
+
+libconstruct!(lib_fn_atan, Environment, |stack, _env| {
+	let Some(x) = stack() else {
+		return Value::None;
+	};
+	match x {
+		Value::Flt(x) => Value::Flt(x.atan()),
+		_ => Value::None,
+	}
+});
+
+libconstruct!(lib_fn_atan2, Environment, |stack, _env| {
+	let Some(x) = stack() else {
+		return Value::None;
+	};
+	let Some(y) = stack() else {
+		return Value::None;
+	};
+	match (x, y) {
+		(Value::Flt(x), Value::Flt(y)) => Value::Flt(x.atan2(y)),
+		_ => Value::None,
+	}
+});
+
+libconstruct!(lib_fn_clamp, Environment, |stack, _env| {
+	let Some(x) = stack() else {
+		return Value::None;
+	};
+	let Some(y) = stack() else {
+		return Value::None;
+	};
+	let Some(z) = stack() else {
+		return Value::None;
+	};
+	match (x, y, z) {
+		(Value::Flt(x), Value::None, Value::Flt(z)) => Value::Flt(x.max(z)),
+		(Value::Flt(x), Value::Flt(y), Value::None) => Value::Flt(x.min(y)),
+		(Value::Flt(x), Value::Flt(y), Value::Flt(z)) => Value::Flt(x.min(y).max(z)),
+		(Value::Int(x), Value::None, Value::Int(z)) => Value::Int(x.max(z)),
+		(Value::Int(x), Value::Int(y), Value::None) => Value::Int(x.min(y)),
+		(Value::Int(x), Value::Int(y), Value::Int(z)) => Value::Int(x.min(y).max(z)),
+		_ => Value::None,
+	}
+});
+
+libconstruct!(lib_fn_abs, Environment, |stack, _env| {
+	let Some(x) = stack() else {
+		return Value::None;
+	};
+	match x {
+		Value::Int(x) => Value::Int(x.abs()),
+		Value::Flt(x) => Value::Flt(x.abs()),
+		_ => Value::None,
+	}
 });
 
 libconstruct!(lib_fn_list, Environment, |stack, _env| {

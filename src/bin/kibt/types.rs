@@ -31,6 +31,8 @@ pub enum TokenKind {
 	Continue,
 	
 	None,
+	True,
+	False,
 	Int,
 	Flt,
 	Ident,
@@ -68,6 +70,7 @@ pub struct NativeFnIndex(pub u32);
 #[derive(Debug)]
 pub enum Value {
 	None,
+	Bool(bool),
 	Int(i32),
 	Flt(f32),
 	Str(String),
@@ -83,6 +86,7 @@ impl Clone for Value {
 	fn clone(&self) -> Self {
 		match self {
 			Value::None => Value::None,
+			Value::Bool(x) => Value::Bool(*x),
 			Value::Int(x) => Value::Int(*x),
 			Value::Flt(x) => Value::Flt(*x),
 			Value::Str(x) => Value::Str(x.clone()),
@@ -97,6 +101,7 @@ impl PartialEq for Value {
 	fn eq(&self, other: &Self) -> bool {
 		match (self, other) {
 			(Value::None, Value::None) => true,
+			(Value::Bool(x), Value::Bool(y)) => x == y,
 			(Value::Int(x), Value::Int(y)) => x == y,
 			(Value::Flt(x), Value::Flt(y)) => x == y,
 			(Value::Str(x), Value::Str(y)) => x == y,
@@ -112,6 +117,7 @@ impl std::fmt::Display for Value {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Value::None => write!(f, "none"),
+			Value::Bool(x) => write!(f, "{}", x),
 			Value::Int(x) => write!(f, "{}", x),
 			Value::Flt(x) => write!(f, "{}", x),
 			Value::Str(x) => write!(f, "{}", x),

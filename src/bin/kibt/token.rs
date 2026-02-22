@@ -96,6 +96,8 @@ impl<'a> Tokenize<'a> {
 					"break" => TokenKind::Break,
 					"continue" => TokenKind::Continue,
 					"none" => TokenKind::None,
+					"true" => TokenKind::True,
+					"false" => TokenKind::False,
 					_ => TokenKind::Ident,
 				}
 			}

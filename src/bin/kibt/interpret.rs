@@ -97,9 +97,8 @@ impl<'a, 'b, 'c, Env> Interpret<'a, 'b, 'c, Env> {
 			ops::JUMP => {
 				let offset = self.word_i32().cast_unsigned();
 				let condition = self.stack.pop();
-				let value = match condition {
-					Some(Value::Int(x)) => x == 0,
-					_ => panic!(),
+				let Some(Value::Bool(value)) = condition else {
+					panic!();
 				};
 				if value {
 					self.pc = offset as usize;
@@ -127,6 +126,14 @@ impl<'a, 'b, 'c, Env> Interpret<'a, 'b, 'c, Env> {
 
 			ops::LIT_NONE => {
 				self.stack.push(Value::None);
+			}
+
+			ops::LIT_TRUE => {
+				self.stack.push(Value::Bool(true));
+			}
+
+			ops::LIT_FALSE => {
+				self.stack.push(Value::Bool(false));
 			}
 
 			ops::CALL => {

@@ -56,6 +56,12 @@ pub mod ops {
 
 	/// pushes a `Value::None` onto the stack
 	pub const LIT_NONE: u8 = 0x13;
+	
+	/// pushes a `Value::Bool` onto the stack
+	pub const LIT_TRUE: u8 = 0x14;
+
+	/// pushes a `Value::Bool` onto the stack
+	pub const LIT_FALSE: u8 = 0x15;
 }
 
 pub struct Compile<'a, I: Iterator<Item = Token<'a>>> {
@@ -249,6 +255,16 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 			let a = x.src().parse::<i32>().map_err(|_| "number parse error".to_string())?;
 			bin.push(ops::LIT_INT);
 			bin.extend_from_slice(&a.to_be_bytes());
+			return Ok(());
+		}
+
+		if self.check(&[TokenKind::True]).is_some() {
+			bin.push(ops::LIT_TRUE);
+			return Ok(());
+		}
+
+		if self.check(&[TokenKind::False]).is_some() {
+			bin.push(ops::LIT_FALSE);
 			return Ok(());
 		}
 
