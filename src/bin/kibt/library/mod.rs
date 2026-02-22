@@ -12,7 +12,7 @@ macro_rules! libconstruct {
 	};
 }
 
-pub fn lib_standalone<E: standalone::EnvironmentStandalone>() -> crate::types::Library<'static, E> {
+pub fn lib_standalone<'a, E: standalone::EnvironmentStandalone>() -> crate::types::Library<'a, E> {
 	&[
 		("int", base::lib_fn_int),
 		("flt", base::lib_fn_flt),
@@ -25,12 +25,15 @@ pub fn lib_standalone<E: standalone::EnvironmentStandalone>() -> crate::types::L
 		("sub", base::lib_fn_sub),
 		("mul", base::lib_fn_mul),
 		("div", base::lib_fn_div),
+		("rem", base::lib_fn_rem),
+		("pow", base::lib_fn_pow),
+		("cat", base::lib_fn_cat),
 		("pi", base::lib_fn_pi),
 		("print", standalone::lib_fn_print),
 	]
 }
 
-pub fn lib_draw<E: draw::EnvironmentDraw>() -> crate::types::Library<'static, E> {
+pub fn lib_draw<'a, E: draw::EnvironmentDraw>() -> crate::types::Library<'a, E> {
 	&[
 		("int", base::lib_fn_int),
 		("flt", base::lib_fn_flt),
@@ -43,6 +46,9 @@ pub fn lib_draw<E: draw::EnvironmentDraw>() -> crate::types::Library<'static, E>
 		("sub", base::lib_fn_sub),
 		("mul", base::lib_fn_mul),
 		("div", base::lib_fn_div),
+		("rem", base::lib_fn_rem),
+		("pow", base::lib_fn_pow),
+		("cat", base::lib_fn_cat),
 		("pi", base::lib_fn_pi),
 		("uv_x", draw::lib_fn_uv_x),
 		("uv_y", draw::lib_fn_uv_y),
@@ -50,6 +56,9 @@ pub fn lib_draw<E: draw::EnvironmentDraw>() -> crate::types::Library<'static, E>
 		("px_y", draw::lib_fn_px_y),
 		("width", draw::lib_fn_width),
 		("height", draw::lib_fn_height),
+		("r", draw::lib_fn_sample_r),
+		("g", draw::lib_fn_sample_g),
+		("b", draw::lib_fn_sample_b),
 	]
 }
 

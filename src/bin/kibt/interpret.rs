@@ -1,16 +1,16 @@
 
 use crate::{compile::ops, types::{Library, NativeFnIndex, Value}};
 
-pub struct Interpret<'a, Env> {
+pub struct Interpret<'a, 'b, 'c: 'b, Env> {
 	pc: usize,
 	stack: Vec<Value>,
 	bin: &'a Vec<u8>,
-	env: &'a Env,
-	natives: Library<'a, Env>,
+	env: &'b Env,
+	natives: Library<'c, Env>,
 }
 
-impl<'a, Env> Interpret<'a, Env> {
-	pub fn new(bin: &'a Vec<u8>, natives: Library<'a, Env>, env: &'a Env) -> Self {
+impl<'a, 'b, 'c, Env> Interpret<'a, 'b, 'c, Env> {
+	pub fn new(bin: &'a Vec<u8>, natives: Library<'c, Env>, env: &'b Env) -> Self {
 		let stack = natives
 			.iter()
 			.enumerate()
@@ -42,12 +42,22 @@ impl<'a, Env> Interpret<'a, Env> {
 		u8::from_be_bytes(self.next::<1>().unwrap())
 	}
 
+	fn word_u16(&mut self) -> u16 {
+		u16::from_be_bytes(self.next::<2>().unwrap())
+	}
+
 	fn word_i32(&mut self) -> i32 {
 		i32::from_be_bytes(self.next::<4>().unwrap())
 	}
 	
 	fn word_f32(&mut self) -> f32 {
 		f32::from_be_bytes(self.next::<4>().unwrap())
+	}
+
+	fn slice(&mut self, len: usize) -> &[u8] {
+		let pc = self.pc;
+		self.pc += len;
+		&self.bin[pc..pc + len]
 	}
 
 	pub fn pop(&mut self) -> Option<Value> {
@@ -60,27 +70,30 @@ impl<'a, Env> Interpret<'a, Env> {
 		}
 		let inst = self.byte();
 		match inst {
-			ops::NOP => {
+			ops::NOP => {}
 
-			}
 			ops::POP => {
 				self.stack.pop();
 			}
+
 			ops::SWAP => {
 				let data_0 = self.stack.pop().unwrap();
 				let data_1 = self.stack.pop().unwrap();
 				self.stack.push(data_0);
 				self.stack.push(data_1);
 			}
+
 			ops::GET => {
 				let offset = self.byte();
 				let data = self.stack[offset as usize].clone();
 				self.stack.push(data);
 			}
+
 			ops::SET => {
 				let offset = self.byte();
 				self.stack[offset as usize] = self.stack.pop().unwrap();
 			}
+
 			ops::JUMP => {
 				let offset = self.word_i32().cast_unsigned();
 				let condition = self.stack.pop();
@@ -92,17 +105,30 @@ impl<'a, Env> Interpret<'a, Env> {
 					self.pc = offset as usize;
 				}
 			}
+
 			ops::LIT_INT => {
 				let data = self.word_i32();
 				self.stack.push(Value::Int(data));
 			}
+
 			ops::LIT_FLT => {
 				let data = self.word_f32();
 				self.stack.push(Value::Flt(data));
 			}
+
+			ops::LIT_STR => {
+				let len = self.word_u16();
+				let data = self.slice(len.into());
+				let s = str::from_utf8(data)
+					.unwrap()
+					.to_string();
+				self.stack.push(Value::Str(s));
+			}
+
 			ops::LIT_NONE => {
 				self.stack.push(Value::None);
 			}
+
 			ops::CALL => {
 				let cmd = self.stack.pop().unwrap();
 				let mut count = self.byte();

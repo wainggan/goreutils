@@ -47,8 +47,15 @@ pub mod ops {
 	/// pushes `x` onto the stack as a `Value::Flt`
 	pub const LIT_FLT: u8 = 0x11;
 
+	/// - operand
+	///     - `x`: `u16`
+	///     - `y`: `[u8; x]`
+	/// 
+	/// pushes `y` onto the stack as a `Value::Str`
+	pub const LIT_STR: u8 = 0x12;
+
 	/// pushes a `Value::None` onto the stack
-	pub const LIT_NONE: u8 = 0x12;
+	pub const LIT_NONE: u8 = 0x13;
 }
 
 pub struct Compile<'a, I: Iterator<Item = Token<'a>>> {
@@ -57,7 +64,7 @@ pub struct Compile<'a, I: Iterator<Item = Token<'a>>> {
 	scope_depth: u32,
 }
 impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
-	pub fn new<Env: ?Sized>(tokens: I, globals: Library<Env>) -> Self {
+	pub fn new<Env>(tokens: I, globals: Library<'_, Env>) -> Self {
 		let env = globals.iter()
 			.map(|x| (x.0, 0))
 			.collect();
@@ -249,6 +256,23 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 			let a = x.src().parse::<f32>().map_err(|_| "number parse error".to_string())?;
 			bin.push(ops::LIT_FLT);
 			bin.extend_from_slice(&a.to_be_bytes());
+			return Ok(());
+		}
+
+		if let Some(x) = self.check(&[TokenKind::Str]) {
+			let a = x.src()
+				.strip_prefix('"')
+				.and_then(|x| x.strip_suffix('"'))
+				.ok_or_else(|| "missing end '\"'".to_string())?;
+			
+			let b: u16 = a.len()
+				.try_into()
+				.map_err(|_| "string may not be longer than 65536 bytes".to_string())?;
+
+			bin.push(ops::LIT_STR);
+			bin.extend_from_slice(&b.to_be_bytes());
+			bin.extend_from_slice(a.as_bytes());
+
 			return Ok(());
 		}
 

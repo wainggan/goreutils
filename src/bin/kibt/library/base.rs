@@ -135,6 +135,53 @@ libconstruct!(lib_fn_div, Environment, |stack, _env| {
 	acc
 });
 
+libconstruct!(lib_fn_rem, Environment, |stack, _env| {
+	let Some(left) = stack() else {
+		return Value::None;
+	};
+	let Some(right) = stack() else {
+		return Value::None;
+	};
+	match (left, right) {
+		(Value::Int(x), Value::Int(y)) => Value::Int(x % y),
+		(Value::Flt(x), Value::Flt(y)) => Value::Flt(x % y),
+		_ => Value::None,
+	}
+});
+
+libconstruct!(lib_fn_pow, Environment, |stack, _env| {
+	let Some(left) = stack() else {
+		return Value::None;
+	};
+	let Some(right) = stack() else {
+		return Value::None;
+	};
+	match (left, right) {
+		(Value::Int(x), Value::Int(y)) => Value::Int(x.pow(y.cast_unsigned())),
+		(Value::Flt(x), Value::Flt(y)) => Value::Flt(x.powf(y)),
+		_ => Value::None,
+	}
+});
+
+libconstruct!(lib_fn_cat, Environment, |stack, _env| {
+	let mut acc = Value::None;
+	loop {
+		let n = stack().unwrap_or(Value::None);
+		if matches!(n, Value::None) {
+			break;
+		}
+		acc = match (acc, n) {
+			(Value::None, y) => y,
+			(Value::Str(mut x), Value::Str(y)) => {
+				x.push_str(&y);
+				Value::Str(x)
+			},
+			_ => Value::None,
+		}
+	}
+	acc
+});
+
 libconstruct!(lib_fn_list, Environment, |stack, _env| {
 	let mut vec = vec![];
 	while let Some(value) = stack() {

@@ -73,11 +73,18 @@ impl<'a> Tokenize<'a> {
 			'*' => TokenKind::Mul,
 			'/' => TokenKind::Div,
 			'%' => TokenKind::Rem,
+
+			'"' => {
+				self.bump_while(|x| x != '"');
+				self.bump();
+				TokenKind::Str
+			}
 			
 			c if c.is_whitespace() => {
 				self.bump_while(|x| x.is_whitespace());
 				TokenKind::Whitespace
 			}
+
 			c if c.is_alphabetic() => {
 				self.bump_while(|x| x.is_alphanumeric() || x == '_');
 				match self.token_src() {
@@ -92,6 +99,7 @@ impl<'a> Tokenize<'a> {
 					_ => TokenKind::Ident,
 				}
 			}
+
 			c if c.is_numeric() || c == '-' => {
 				self.bump_while(|x| x.is_numeric());
 				if matches!(self.peek_one(), Some(x) if x == '.') {
@@ -102,6 +110,7 @@ impl<'a> Tokenize<'a> {
 					TokenKind::Int
 				}
 			}
+
 			_ => TokenKind::Error(crate::types::TokenError::UnknownChar),
 		};
 

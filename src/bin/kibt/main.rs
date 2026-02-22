@@ -14,9 +14,7 @@ struct Config {
 	help: bool,
 	version: bool,
 	output: Option<String>,
-	one: bool,
 	size: (u32, u32),
-
 }
 
 impl Default for Config {
@@ -25,7 +23,6 @@ impl Default for Config {
 			help: false,
 			version: false,
 			output: None,
-			one: false,
 			size: (64, 64),
 		}
 	}
@@ -46,10 +43,6 @@ const RULES: &[args::Rule<Config>] = &[
 			return Err(());
 		};
 		c.output = Some(x.to_string());
-		Ok(())
-	}),
-	("one", None, &|c, _, _| {
-		c.one = true;
 		Ok(())
 	}),
 	("size", Some('d'), &|c, a, e| {
@@ -78,10 +71,16 @@ const RULES: &[args::Rule<Config>] = &[
 ];
 
 const HELP: &str = "\
-Usage: kibt [OPTION]...
+Usage: kibt [OPTION]... [MODE] [SCRIPTS]...
 Image scripting.
+  available modes
+      one           run the scripts sequentially, once. prints
+                    resulting values to standard out.
+	  img           run the scripts on a pixel buffer. scripts
+                    are run in their entirety on individual pixels.
+                    resulting values are interpreted as pixels.
+
   -o, --output [x]  save output image to x (default=output.bmp)
-      --one         outputs a single execution to standard out
   -d, --size [x] [y]
                     set canvas size to width=x and height=y
                     (default=64 64)
@@ -98,11 +97,10 @@ sublicense or whatever they want with this software but at their OWN RISK
 <https://github.com/me-shaon/GLWTPL/blob/master/LICENSE>
 ";
 
-
 fn main() {
 	let out = args::quick(RULES);
 
-	let (config, value) = match out {
+	let (config, mut value) = match out {
 		Ok(x) => x,
 		Err(e) => {
 			eprintln!("kibt: {}", e);
@@ -121,7 +119,26 @@ fn main() {
 		return;
 	}
 
-	if config.one {
+
+	if value.is_empty(){
+		eprintln!("kibt: mode not specified");
+		eprintln!("Try 'kibt --help' for more information.");
+		return;
+	}
+
+	let mode_str = value.remove(0);
+
+	let mode = match mode_str.as_str() {
+		"one" => 0,
+		"img" => 1,
+		_ => {
+			eprintln!("kibt: invalid mode: '{}'", mode_str);
+			eprintln!("Try 'kibt --help' for more information.");
+			return;
+		},
+	};
+
+	if mode == 0 {
 		#[derive(Debug)]
 		struct Env {}
 
@@ -159,17 +176,18 @@ fn main() {
 			println!("{}", out);
 		}
 	}
-	else {
+	else if mode == 1 {
 		#[derive(Debug)]
-		struct Env {
+		struct Env<'a> {
 			uv: (f32, f32),
 			px: (u32, u32),
 			size: (u32, u32),
+			canvas: &'a [(f32, f32, f32)],
 		}
 
-		impl crate::library::Environment for Env {}
+		impl<'a> crate::library::Environment for Env<'a> {}
 
-		impl crate::library::draw::EnvironmentDraw for Env {
+		impl<'a> crate::library::draw::EnvironmentDraw for Env<'a> {
 			fn uv(&self) -> (f32, f32) {
 				self.uv
 			}
@@ -181,14 +199,24 @@ fn main() {
 			fn size(&self) -> (u32, u32) {
 				self.size
 			}
+
+			fn sample(&self, x: f32, y: f32) -> (f32, f32, f32) {
+				let size = self.size();
+				let rx = (x.clamp(0.0, 1.0f32.next_down()) * size.0 as f32) as u32;
+				let ry = (y.clamp(0.0, 1.0f32.next_down()) * size.1 as f32) as u32;
+				let idx = rx + ry * size.0;
+				self.canvas[idx as usize]
+			}
 		}
 
-		let mut canvas = vec![(0u8, 0u8, 0u8); (config.size.0 * config.size.1) as usize];
-
-		let lib = crate::library::lib_draw();
-
+		let mut canvas = vec![(0.0f32, 0.0f32, 0.0f32); (config.size.0 * config.size.1) as usize];
+		
 		for src in value {
+			let lib = crate::library::lib_draw();
+			let working_canvas = canvas.clone();
+
 			let tokens = crate::token::Tokenize::new(&src);
+
 			let bin = crate::compile::Compile::new(tokens.into_iter(), lib).parse().unwrap();
 
 			for (i, poke) in canvas.iter_mut().enumerate() {
@@ -197,6 +225,7 @@ fn main() {
 					uv: (px.0 as f32 / config.size.0 as f32, px.1 as f32 / config.size.1 as f32),
 					px: (px.0, px.1),
 					size: (config.size.0, config.size.1),
+					canvas: &working_canvas,
 				};
 
 				let mut vm = crate::interpret::Interpret::new(&bin, lib, &env);
@@ -205,17 +234,16 @@ fn main() {
 				}
 
 				let out = vm.pop().unwrap_or(crate::types::Value::None);
-				
 				let map = |x| match x {
-					crate::types::Value::Int(x) => x.clamp(0, 255) as u8,
-					crate::types::Value::Flt(x) => (x.clamp(0.0, 1.0) * 256.0) as u8,
-					_ => 0,
+					crate::types::Value::Int(x) => x.clamp(0, 255) as f32 / 255.0,
+					crate::types::Value::Flt(x) => x.clamp(0.0, 1.0),
+					_ => 0.0,
 				};
 
 				let color = match out {
 					crate::types::Value::List(mut vec) => {
 						if vec.len() != 3 {
-							(0, 0, 0)
+							(0.0, 0.0, 0.0)
 						} else {
 							let b = vec.pop().unwrap();
 							let g = vec.pop().unwrap();
@@ -278,8 +306,9 @@ fn main() {
 				let i = x + y * config.size.0;
 
 				let c = &canvas[i as usize];
+				let m = ((c.0 * 255.0) as u8, (c.1 * 255.0) as u8, (c.2 * 255.0) as u8);
 
-				buffer.extend(&[c.2, c.1, c.0]);
+				buffer.extend(&[m.2, m.1, m.0]);
 
 				x += 1;
 

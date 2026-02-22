@@ -34,7 +34,7 @@ pub enum TokenKind {
 	Int,
 	Flt,
 	Ident,
-	String,
+	Str,
 }
 
 #[derive(Debug, PartialEq)]
@@ -60,16 +60,17 @@ impl<'a> Token<'a> {
 	}
 }
 
-pub type NativeFn<E> = for<'a> fn(&'a mut (dyn FnMut() -> Option<Value> + 'a), &E) -> Value;
+pub type NativeFn<E> = for<'a> fn(&'a mut (dyn FnMut() -> Option<Value> + 'a), &'_ E) -> Value;
 
 #[derive(Debug, Clone)]
 pub struct NativeFnIndex(pub u32);
 
 #[derive(Debug)]
-pub enum Value<> {
+pub enum Value {
 	None,
 	Int(i32),
 	Flt(f32),
+	Str(String),
 	// FUCK
 	// todo: OPTIMIZE
 	List(Vec<Value>),
@@ -84,6 +85,7 @@ impl Clone for Value {
 			Value::None => Value::None,
 			Value::Int(x) => Value::Int(*x),
 			Value::Flt(x) => Value::Flt(*x),
+			Value::Str(x) => Value::Str(x.clone()),
 			Value::List(x) => Value::List(x.clone()),
 			Value::Fn(x) => Value::Fn(*x),
 			Value::NativeFn(x) => Value::NativeFn(x.clone()),
@@ -97,6 +99,7 @@ impl PartialEq for Value {
 			(Value::None, Value::None) => true,
 			(Value::Int(x), Value::Int(y)) => x == y,
 			(Value::Flt(x), Value::Flt(y)) => x == y,
+			(Value::Str(x), Value::Str(y)) => x == y,
 			(Value::List(x), Value::List(y)) => x == y,
 			(Value::Fn(_), Value::Fn(_)) => false,
 			(Value::NativeFn(_), Value::NativeFn(_)) => false,
@@ -111,6 +114,7 @@ impl std::fmt::Display for Value {
 			Value::None => write!(f, "none"),
 			Value::Int(x) => write!(f, "{}", x),
 			Value::Flt(x) => write!(f, "{}", x),
+			Value::Str(x) => write!(f, "{}", x),
 			Value::List(x) => {
 				write!(f, "[ ")?;
 				for y in x.iter() {

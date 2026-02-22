@@ -4,6 +4,7 @@ pub trait EnvironmentDraw: Environment {
 	fn uv(&self) -> (f32, f32);
 	fn px(&self) -> (u32, u32);
 	fn size(&self) -> (u32, u32);
+	fn sample(&self, x: f32, y: f32) -> (f32, f32, f32);
 }
 
 libconstruct!(lib_fn_uv_x, EnvironmentDraw, |_stack, env| {
@@ -30,6 +31,36 @@ libconstruct!(lib_fn_height, EnvironmentDraw, |_stack, env| {
 	Value::Int(env.size().1 as i32)
 });
 
+libconstruct!(lib_fn_sample_r, EnvironmentDraw, |stack, env| {
+	let pos_x = stack().unwrap_or_else(|| Value::Flt(env.uv().0));
+	let pos_y = stack().unwrap_or_else(|| Value::Flt(env.uv().1));
+	let col = match (pos_x, pos_y) {
+		(Value::Flt(x), Value::Flt(y)) => env.sample(x, y),
+		_ => return Value::None,
+	};
+	Value::Flt(col.0)
+});
+
+libconstruct!(lib_fn_sample_g, EnvironmentDraw, |stack, env| {
+	let pos_x = stack().unwrap_or_else(|| Value::Flt(env.uv().0));
+	let pos_y = stack().unwrap_or_else(|| Value::Flt(env.uv().1));
+	let col = match (pos_x, pos_y) {
+		(Value::Flt(x), Value::Flt(y)) => env.sample(x, y),
+		_ => return Value::None,
+	};
+	Value::Flt(col.1)
+});
+
+libconstruct!(lib_fn_sample_b, EnvironmentDraw, |stack, env| {
+	let pos_x = stack().unwrap_or_else(|| Value::Flt(env.uv().0));
+	let pos_y = stack().unwrap_or_else(|| Value::Flt(env.uv().1));
+	let col = match (pos_x, pos_y) {
+		(Value::Flt(x), Value::Flt(y)) => env.sample(x, y),
+		_ => return Value::None,
+	};
+	Value::Flt(col.2)
+});
+
 #[cfg(test)]
 mod test {
     use crate::{library::{Environment, draw}, types::Value};
@@ -53,6 +84,10 @@ mod test {
 
 		fn size(&self) -> (u32, u32) {
 			self.size
+		}
+
+		fn sample(&self, _x: f32, _y: f32) -> (f32, f32, f32) {
+			(0.0, 0.0, 0.0)
 		}
 	}
 
