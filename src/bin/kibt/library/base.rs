@@ -1,4 +1,4 @@
-use crate::{libconstruct, library::Environment, types::Value};
+use crate::{lib_construct, library::Environment, types::Value};
 
 #[inline]
 fn to_int(x: &Value) -> Value {
@@ -100,23 +100,23 @@ fn gte(x: &Value, y: &Value) -> Value {
 	lte(y, x)
 }
 
-libconstruct!(lib_fn_int, Environment, |stack, _env| {
+lib_construct!(lib_fn_int, Environment, |stack, _env| {
 	to_int(&stack().unwrap_or(Value::None))
 });
 
-libconstruct!(lib_fn_flt, Environment, |stack, _env| {
+lib_construct!(lib_fn_flt, Environment, |stack, _env| {
 	to_flt(&stack().unwrap_or(Value::None))
 });
 
-libconstruct!(lib_fn_bool, Environment, |stack, _env| {
+lib_construct!(lib_fn_bool, Environment, |stack, _env| {
 	to_bool(&stack().unwrap_or(Value::None))
 });
 
-libconstruct!(lib_fn_not, Environment, |stack, _env| {
+lib_construct!(lib_fn_not, Environment, |stack, _env| {
 	not(&stack().unwrap_or(Value::None))
 });
 
-libconstruct!(lib_fn_neg, Environment, |stack, _env| {
+lib_construct!(lib_fn_neg, Environment, |stack, _env| {
 	let value = stack().unwrap_or(Value::None);
 	match value {
 		Value::Int(x) => Value::Int(-x),
@@ -145,43 +145,43 @@ macro_rules! impl_fn_cmp {
 	};
 }
 
-libconstruct!(lib_fn_or, Environment, |stack, _env| {
+lib_construct!(lib_fn_or, Environment, |stack, _env| {
 	impl_fn_cmp!(or, stack)
 });
 
-libconstruct!(lib_fn_and, Environment, |stack, _env| {
+lib_construct!(lib_fn_and, Environment, |stack, _env| {
 	impl_fn_cmp!(and, stack)
 });
 
-libconstruct!(lib_fn_xor, Environment, |stack, _env| {
+lib_construct!(lib_fn_xor, Environment, |stack, _env| {
 	impl_fn_cmp!(xor, stack)
 });
 
-libconstruct!(lib_fn_lt, Environment, |stack, _env| {
+lib_construct!(lib_fn_lt, Environment, |stack, _env| {
 	impl_fn_cmp!(lt, stack)
 });
 
-libconstruct!(lib_fn_gt, Environment, |stack, _env| {
+lib_construct!(lib_fn_gt, Environment, |stack, _env| {
 	impl_fn_cmp!(gt, stack)
 });
 
-libconstruct!(lib_fn_lte, Environment, |stack, _env| {
+lib_construct!(lib_fn_lte, Environment, |stack, _env| {
 	impl_fn_cmp!(lte, stack)
 });
 
-libconstruct!(lib_fn_gte, Environment, |stack, _env| {
+lib_construct!(lib_fn_gte, Environment, |stack, _env| {
 	impl_fn_cmp!(gte, stack)
 });
 
-libconstruct!(lib_fn_eq, Environment, |stack, _env| {
+lib_construct!(lib_fn_eq, Environment, |stack, _env| {
 	impl_fn_cmp!(eq, stack)
 });
 
-libconstruct!(lib_fn_ne, Environment, |stack, _env| {
+lib_construct!(lib_fn_ne, Environment, |stack, _env| {
 	impl_fn_cmp!(ne, stack)
 });
 
-libconstruct!(lib_fn_add, Environment, |stack, _env| {
+lib_construct!(lib_fn_add, Environment, |stack, _env| {
 	let mut acc = Value::None;
 	loop {
 		let n = stack().unwrap_or(Value::None);
@@ -198,7 +198,7 @@ libconstruct!(lib_fn_add, Environment, |stack, _env| {
 	acc
 });
 
-libconstruct!(lib_fn_sub, Environment, |stack, _env| {
+lib_construct!(lib_fn_sub, Environment, |stack, _env| {
 	let mut acc = Value::None;
 	loop {
 		let n = stack().unwrap_or(Value::None);
@@ -215,7 +215,7 @@ libconstruct!(lib_fn_sub, Environment, |stack, _env| {
 	acc
 });
 
-libconstruct!(lib_fn_mul, Environment, |stack, _env| {
+lib_construct!(lib_fn_mul, Environment, |stack, _env| {
 	let mut acc = Value::None;
 	loop {
 		let n = stack().unwrap_or(Value::None);
@@ -232,7 +232,7 @@ libconstruct!(lib_fn_mul, Environment, |stack, _env| {
 	acc
 });
 
-libconstruct!(lib_fn_div, Environment, |stack, _env| {
+lib_construct!(lib_fn_div, Environment, |stack, _env| {
 	let mut acc = Value::None;
 	loop {
 		let n = stack().unwrap_or(Value::None);
@@ -249,7 +249,7 @@ libconstruct!(lib_fn_div, Environment, |stack, _env| {
 	acc
 });
 
-libconstruct!(lib_fn_rem, Environment, |stack, _env| {
+lib_construct!(lib_fn_rem, Environment, |stack, _env| {
 	let Some(left) = stack() else {
 		return Value::None;
 	};
@@ -263,7 +263,7 @@ libconstruct!(lib_fn_rem, Environment, |stack, _env| {
 	}
 });
 
-libconstruct!(lib_fn_pow, Environment, |stack, _env| {
+lib_construct!(lib_fn_pow, Environment, |stack, _env| {
 	let Some(left) = stack() else {
 		return Value::None;
 	};
@@ -277,7 +277,7 @@ libconstruct!(lib_fn_pow, Environment, |stack, _env| {
 	}
 });
 
-libconstruct!(lib_fn_cat, Environment, |stack, _env| {
+lib_construct!(lib_fn_cat, Environment, |stack, _env| {
 	let mut acc = Value::None;
 	loop {
 		let n = stack().unwrap_or(Value::None);
@@ -296,7 +296,7 @@ libconstruct!(lib_fn_cat, Environment, |stack, _env| {
 	acc
 });
 
-libconstruct!(lib_fn_sin, Environment, |stack, _env| {
+lib_construct!(lib_fn_sin, Environment, |stack, _env| {
 	let Some(x) = stack() else {
 		return Value::None;
 	};
@@ -306,7 +306,7 @@ libconstruct!(lib_fn_sin, Environment, |stack, _env| {
 	}
 });
 
-libconstruct!(lib_fn_asin, Environment, |stack, _env| {
+lib_construct!(lib_fn_asin, Environment, |stack, _env| {
 	let Some(x) = stack() else {
 		return Value::None;
 	};
@@ -316,7 +316,7 @@ libconstruct!(lib_fn_asin, Environment, |stack, _env| {
 	}
 });
 
-libconstruct!(lib_fn_cos, Environment, |stack, _env| {
+lib_construct!(lib_fn_cos, Environment, |stack, _env| {
 	let Some(x) = stack() else {
 		return Value::None;
 	};
@@ -326,7 +326,7 @@ libconstruct!(lib_fn_cos, Environment, |stack, _env| {
 	}
 });
 
-libconstruct!(lib_fn_acos, Environment, |stack, _env| {
+lib_construct!(lib_fn_acos, Environment, |stack, _env| {
 	let Some(x) = stack() else {
 		return Value::None;
 	};
@@ -336,7 +336,7 @@ libconstruct!(lib_fn_acos, Environment, |stack, _env| {
 	}
 });
 
-libconstruct!(lib_fn_tan, Environment, |stack, _env| {
+lib_construct!(lib_fn_tan, Environment, |stack, _env| {
 	let Some(x) = stack() else {
 		return Value::None;
 	};
@@ -346,7 +346,7 @@ libconstruct!(lib_fn_tan, Environment, |stack, _env| {
 	}
 });
 
-libconstruct!(lib_fn_atan, Environment, |stack, _env| {
+lib_construct!(lib_fn_atan, Environment, |stack, _env| {
 	let Some(x) = stack() else {
 		return Value::None;
 	};
@@ -356,7 +356,7 @@ libconstruct!(lib_fn_atan, Environment, |stack, _env| {
 	}
 });
 
-libconstruct!(lib_fn_atan2, Environment, |stack, _env| {
+lib_construct!(lib_fn_atan2, Environment, |stack, _env| {
 	let Some(x) = stack() else {
 		return Value::None;
 	};
@@ -369,7 +369,7 @@ libconstruct!(lib_fn_atan2, Environment, |stack, _env| {
 	}
 });
 
-libconstruct!(lib_fn_clamp, Environment, |stack, _env| {
+lib_construct!(lib_fn_clamp, Environment, |stack, _env| {
 	let Some(x) = stack() else {
 		return Value::None;
 	};
@@ -390,7 +390,7 @@ libconstruct!(lib_fn_clamp, Environment, |stack, _env| {
 	}
 });
 
-libconstruct!(lib_fn_abs, Environment, |stack, _env| {
+lib_construct!(lib_fn_abs, Environment, |stack, _env| {
 	let Some(x) = stack() else {
 		return Value::None;
 	};
@@ -401,7 +401,7 @@ libconstruct!(lib_fn_abs, Environment, |stack, _env| {
 	}
 });
 
-libconstruct!(lib_fn_list, Environment, |stack, _env| {
+lib_construct!(lib_fn_list, Environment, |stack, _env| {
 	let mut vec = vec![];
 	while let Some(value) = stack() {
 		vec.push(value);
@@ -409,7 +409,7 @@ libconstruct!(lib_fn_list, Environment, |stack, _env| {
 	Value::List(vec)
 });
 
-libconstruct!(lib_fn_pi, Environment, |_stack, _env| {
+lib_construct!(lib_fn_pi, Environment, |_stack, _env| {
 	Value::Flt(core::f32::consts::PI)
 });
 

@@ -69,6 +69,7 @@ pub struct Compile<'a, I: Iterator<Item = Token<'a>>> {
 	env: Vec<(&'a str, u32)>,
 	scope_depth: u32,
 }
+
 impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 	pub fn new<Env>(tokens: I, globals: Library<'_, Env>) -> Self {
 		let env = globals.iter()

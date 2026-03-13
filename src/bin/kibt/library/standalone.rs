@@ -1,10 +1,10 @@
-use crate::{libconstruct, library::Environment, types::Value};
+use crate::{lib_construct, library::Environment, types::Value};
 
 pub trait EnvironmentStandalone: Environment {
 	fn stdout(&self, write: &mut dyn FnMut(&mut dyn std::fmt::Write));
 }
 
-libconstruct!(lib_fn_print, EnvironmentStandalone, |stack, env| {
+lib_construct!(lib_fn_print, EnvironmentStandalone, |stack, env| {
 	while let Some(value) = stack() {
 		env.stdout(&mut |f| _ = writeln!(f, "{}", value));
 	}

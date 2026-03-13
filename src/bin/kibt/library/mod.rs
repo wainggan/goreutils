@@ -6,7 +6,7 @@ pub mod standalone;
 pub mod draw;
 
 #[macro_export]
-macro_rules! libconstruct {
+macro_rules! lib_construct {
 	($name:ident, $env:ident, |$left:ident, $right:ident| $block:block) => {
 		pub fn $name<E: $env>($left: &mut dyn FnMut() -> Option<Value>, $right: &E) -> Value $block
 	};

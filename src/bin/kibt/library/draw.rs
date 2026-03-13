@@ -1,4 +1,4 @@
-use crate::{libconstruct, library::Environment, types::Value};
+use crate::{lib_construct, library::Environment, types::Value};
 
 pub trait EnvironmentDraw: Environment {
 	fn uv(&self) -> (f32, f32);
@@ -7,31 +7,31 @@ pub trait EnvironmentDraw: Environment {
 	fn sample(&self, x: f32, y: f32) -> (f32, f32, f32);
 }
 
-libconstruct!(lib_fn_uv_x, EnvironmentDraw, |_stack, env| {
+lib_construct!(lib_fn_uv_x, EnvironmentDraw, |_stack, env| {
 	Value::Flt(env.uv().0)
 });
 
-libconstruct!(lib_fn_uv_y, EnvironmentDraw, |_stack, env| {
+lib_construct!(lib_fn_uv_y, EnvironmentDraw, |_stack, env| {
 	Value::Flt(env.uv().1)
 });
 
-libconstruct!(lib_fn_px_x, EnvironmentDraw, |_stack, env| {
+lib_construct!(lib_fn_px_x, EnvironmentDraw, |_stack, env| {
 	Value::Int(env.px().0 as i32)
 });
 
-libconstruct!(lib_fn_px_y, EnvironmentDraw, |_stack, env| {
+lib_construct!(lib_fn_px_y, EnvironmentDraw, |_stack, env| {
 	Value::Int(env.px().1 as i32)
 });
 
-libconstruct!(lib_fn_width, EnvironmentDraw, |_stack, env| {
+lib_construct!(lib_fn_width, EnvironmentDraw, |_stack, env| {
 	Value::Int(env.size().0 as i32)
 });
 
-libconstruct!(lib_fn_height, EnvironmentDraw, |_stack, env| {
+lib_construct!(lib_fn_height, EnvironmentDraw, |_stack, env| {
 	Value::Int(env.size().1 as i32)
 });
 
-libconstruct!(lib_fn_sample_r, EnvironmentDraw, |stack, env| {
+lib_construct!(lib_fn_sample_r, EnvironmentDraw, |stack, env| {
 	let pos_x = stack().unwrap_or_else(|| Value::Flt(env.uv().0));
 	let pos_y = stack().unwrap_or_else(|| Value::Flt(env.uv().1));
 	let col = match (pos_x, pos_y) {
@@ -41,7 +41,7 @@ libconstruct!(lib_fn_sample_r, EnvironmentDraw, |stack, env| {
 	Value::Flt(col.0)
 });
 
-libconstruct!(lib_fn_sample_g, EnvironmentDraw, |stack, env| {
+lib_construct!(lib_fn_sample_g, EnvironmentDraw, |stack, env| {
 	let pos_x = stack().unwrap_or_else(|| Value::Flt(env.uv().0));
 	let pos_y = stack().unwrap_or_else(|| Value::Flt(env.uv().1));
 	let col = match (pos_x, pos_y) {
@@ -51,7 +51,7 @@ libconstruct!(lib_fn_sample_g, EnvironmentDraw, |stack, env| {
 	Value::Flt(col.1)
 });
 
-libconstruct!(lib_fn_sample_b, EnvironmentDraw, |stack, env| {
+lib_construct!(lib_fn_sample_b, EnvironmentDraw, |stack, env| {
 	let pos_x = stack().unwrap_or_else(|| Value::Flt(env.uv().0));
 	let pos_y = stack().unwrap_or_else(|| Value::Flt(env.uv().1));
 	let col = match (pos_x, pos_y) {

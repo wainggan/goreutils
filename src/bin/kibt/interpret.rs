@@ -1,4 +1,3 @@
-
 use crate::{compile::ops, types::{Library, NativeFnIndex, Value}};
 
 pub struct Interpret<'a, 'b, 'c: 'b, Env> {
@@ -64,10 +63,11 @@ impl<'a, 'b, 'c, Env> Interpret<'a, 'b, 'c, Env> {
 		self.stack.pop()
 	}
 
-	pub fn tick(&mut self) {
+	pub fn tick(&mut self) -> Result<(), String> {
 		if self.end() {
-			return;
+			return Ok(());
 		}
+
 		let inst = self.byte();
 		match inst {
 			ops::NOP => {}
@@ -168,6 +168,8 @@ impl<'a, 'b, 'c, Env> Interpret<'a, 'b, 'c, Env> {
 			}
 			_ => unimplemented!(),
 		}
+
+		Ok(())
 	}
 }
 
@@ -197,13 +199,13 @@ mod test {
 
 		let mut interpret = Interpret::new(&bin, &globals, &());
 
-		interpret.tick();
+		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![Value::Int(1)]);
-		interpret.tick();
+		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![]);
-		interpret.tick();
+		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![Value::Flt(0.2)]);
-		interpret.tick();
+		_ = interpret.tick();
 	}
 
 	#[test]
@@ -243,29 +245,29 @@ mod test {
 
 		let mut interpret = Interpret::new(&bin, &globals, &());
 
-		interpret.tick();
-		interpret.tick();
-		interpret.tick();
+		_ = interpret.tick();
+		_ = interpret.tick();
+		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![Value::Int(1)]);
-		interpret.tick();
-		interpret.tick();
-		interpret.tick();
+		_ = interpret.tick();
+		_ = interpret.tick();
+		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![Value::Int(1), Value::Int(2)]);
-		interpret.tick();
+		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![Value::Int(1), Value::Int(2), Value::Int(1)]);
-		interpret.tick();
+		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![Value::Int(1), Value::Int(2)]);
-		interpret.tick();
+		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![Value::Int(1), Value::Int(2), Value::Int(2)]);
-		interpret.tick();
+		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![Value::Int(1), Value::Int(2), Value::Int(2)]);
-		interpret.tick();
+		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![Value::Int(1), Value::Int(2)]);
-		interpret.tick();
+		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![Value::Int(2), Value::Int(1)]);
-		interpret.tick();
+		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![Value::Int(2)]);
-		interpret.tick();
+		_ = interpret.tick();
 	}
 }
 
