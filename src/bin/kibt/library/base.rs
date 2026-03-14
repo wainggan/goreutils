@@ -1,126 +1,126 @@
-use crate::{lib_construct, library::Environment, types::Value};
+use crate::{lib_construct, library::Environment, types::Tagged};
 
 #[inline]
-fn to_int(x: &Value) -> Value {
+fn to_int(x: &Tagged) -> Tagged {
 	match x {
-		Value::Int(x) => Value::Int(*x),
-		Value::Flt(x) => Value::Int(*x as i32),
-		Value::Bool(x) => Value::Int(*x as i32),
-		_ => Value::Int(0),
+		Tagged::Int(x) => Tagged::Int(*x),
+		Tagged::Flt(x) => Tagged::Int(*x as i32),
+		Tagged::Bool(x) => Tagged::Int(*x as i32),
+		_ => Tagged::Int(0),
 	}
 }
 
 #[inline]
-fn to_flt(x: &Value) -> Value {
+fn to_flt(x: &Tagged) -> Tagged {
 	match x {
-		Value::Flt(x) => Value::Flt(*x),
-		Value::Int(x) => Value::Flt(*x as f32),
-		_ => Value::Flt(0.0),
+		Tagged::Flt(x) => Tagged::Flt(*x),
+		Tagged::Int(x) => Tagged::Flt(*x as f64),
+		_ => Tagged::Flt(0.0),
 	}
 }
 
 #[inline]
-fn to_bool(x: &Value) -> Value {
+fn to_bool(x: &Tagged) -> Tagged {
 	match x {
-		Value::Bool(x) => Value::Bool(*x),
-		Value::Flt(x) => Value::Bool(*x != 0.0),
-		Value::Int(x) => Value::Bool(*x != 0),
-		Value::None => Value::Bool(false),
-		_ => Value::Bool(true),
+		Tagged::Bool(x) => Tagged::Bool(*x),
+		Tagged::Flt(x) => Tagged::Bool(*x != 0.0),
+		Tagged::Int(x) => Tagged::Bool(*x != 0),
+		Tagged::None => Tagged::Bool(false),
+		_ => Tagged::Bool(true),
 	}
 }
 
 #[inline]
-fn not(x: &Value) -> Value {
+fn not(x: &Tagged) -> Tagged {
 	match x {
-		Value::Bool(x) => Value::Bool(!x),
-		_ => Value::Bool(false),
+		Tagged::Bool(x) => Tagged::Bool(!x),
+		_ => Tagged::Bool(false),
 	}
 }
 
 #[inline]
-fn and(x: &Value, y: &Value) -> Value {
+fn and(x: &Tagged, y: &Tagged) -> Tagged {
 	match (x, y) {
-		(Value::Bool(x), Value::Bool(y)) => Value::Bool(*x && *y),
-		_ => Value::Bool(false),
+		(Tagged::Bool(x), Tagged::Bool(y)) => Tagged::Bool(*x && *y),
+		_ => Tagged::Bool(false),
 	}
 }
 
 #[inline]
-fn xor(x: &Value, y: &Value) -> Value {
+fn xor(x: &Tagged, y: &Tagged) -> Tagged {
 	match (x, y) {
-		(Value::Bool(x), Value::Bool(y)) => Value::Bool(*x ^ *y),
-		_ => Value::Bool(false),
+		(Tagged::Bool(x), Tagged::Bool(y)) => Tagged::Bool(*x ^ *y),
+		_ => Tagged::Bool(false),
 	}
 }
 
 #[inline]
-fn or(x: &Value, y: &Value) -> Value {
+fn or(x: &Tagged, y: &Tagged) -> Tagged {
 	match (x, y) {
-		(Value::Bool(x), Value::Bool(y)) => Value::Bool(*x || *y),
-		_ => Value::Bool(false),
+		(Tagged::Bool(x), Tagged::Bool(y)) => Tagged::Bool(*x || *y),
+		_ => Tagged::Bool(false),
 	}
 }
 
 #[inline]
-fn eq(x: &Value, y: &Value) -> Value {
-	Value::Bool(x == y)
+fn eq(x: &Tagged, y: &Tagged) -> Tagged {
+	Tagged::Bool(x == y)
 }
 
 #[inline]
-fn ne(x: &Value, y: &Value) -> Value {
-	Value::Bool(x != y)
+fn ne(x: &Tagged, y: &Tagged) -> Tagged {
+	Tagged::Bool(x != y)
 }
 
 #[inline]
-fn lt(x: &Value, y: &Value) -> Value {
+fn lt(x: &Tagged, y: &Tagged) -> Tagged {
 	match (x, y) {
-		(Value::Int(x), Value::Int(y)) => Value::Bool(*x < *y),
-		(Value::Flt(x), Value::Flt(y)) => Value::Bool(*x < *y),
-		_ => Value::Bool(false),
+		(Tagged::Int(x), Tagged::Int(y)) => Tagged::Bool(*x < *y),
+		(Tagged::Flt(x), Tagged::Flt(y)) => Tagged::Bool(*x < *y),
+		_ => Tagged::Bool(false),
 	}
 }
 
 #[inline]
-fn gt(x: &Value, y: &Value) -> Value {
+fn gt(x: &Tagged, y: &Tagged) -> Tagged {
 	lt(y, x)
 }
 
 #[inline]
-fn lte(x: &Value, y: &Value) -> Value {
+fn lte(x: &Tagged, y: &Tagged) -> Tagged {
 	let a = lt(x, y);
 	match a {
-		Value::Bool(true) => eq(x, y),
+		Tagged::Bool(true) => eq(x, y),
 		m => m,
 	}
 }
 
 #[inline]
-fn gte(x: &Value, y: &Value) -> Value {
+fn gte(x: &Tagged, y: &Tagged) -> Tagged {
 	lte(y, x)
 }
 
 lib_construct!(lib_fn_int, Environment, |stack, _env| {
-	to_int(&stack().unwrap_or(Value::None))
+	to_int(&stack().unwrap_or(Tagged::None))
 });
 
 lib_construct!(lib_fn_flt, Environment, |stack, _env| {
-	to_flt(&stack().unwrap_or(Value::None))
+	to_flt(&stack().unwrap_or(Tagged::None))
 });
 
 lib_construct!(lib_fn_bool, Environment, |stack, _env| {
-	to_bool(&stack().unwrap_or(Value::None))
+	to_bool(&stack().unwrap_or(Tagged::None))
 });
 
 lib_construct!(lib_fn_not, Environment, |stack, _env| {
-	not(&stack().unwrap_or(Value::None))
+	not(&stack().unwrap_or(Tagged::None))
 });
 
 lib_construct!(lib_fn_neg, Environment, |stack, _env| {
-	let value = stack().unwrap_or(Value::None);
-	match value {
-		Value::Int(x) => Value::Int(-x),
-		Value::Flt(x) => Value::Flt(-x),
+	let Tagged = stack().unwrap_or(Tagged::None);
+	match Tagged {
+		Tagged::Int(x) => Tagged::Int(-x),
+		Tagged::Flt(x) => Tagged::Flt(-x),
 		x => x,
 	}
 });
@@ -128,14 +128,14 @@ lib_construct!(lib_fn_neg, Environment, |stack, _env| {
 macro_rules! impl_fn_cmp {
 	($fn:ident, $stack:ident) => {
 		{
-			let mut x = $stack().unwrap_or(Value::None);
-			let mut acc = Value::Bool(true);
+			let mut x = $stack().unwrap_or(Tagged::None);
+			let mut acc = Tagged::Bool(true);
 			loop {
 				let Some(y) = $stack() else {
 					break;
 				};
 				acc = $fn(&x, &y);
-				if let Value::Bool(false) = acc {
+				if let Tagged::Bool(false) = acc {
 					break;
 				}
 				x = y;
@@ -182,68 +182,68 @@ lib_construct!(lib_fn_ne, Environment, |stack, _env| {
 });
 
 lib_construct!(lib_fn_add, Environment, |stack, _env| {
-	let mut acc = Value::None;
+	let mut acc = Tagged::None;
 	loop {
-		let n = stack().unwrap_or(Value::None);
-		if matches!(n, Value::None) {
+		let n = stack().unwrap_or(Tagged::None);
+		if matches!(n, Tagged::None) {
 			break;
 		}
 		acc = match (acc, n) {
-			(Value::None, y) => y,
-			(Value::Int(x), Value::Int(y)) => Value::Int(x.wrapping_add(y)),
-			(Value::Flt(x), Value::Flt(y)) => Value::Flt(x + y),
-			_ => Value::None,
+			(Tagged::None, y) => y,
+			(Tagged::Int(x), Tagged::Int(y)) => Tagged::Int(x.wrapping_add(y)),
+			(Tagged::Flt(x), Tagged::Flt(y)) => Tagged::Flt(x + y),
+			_ => Tagged::None,
 		}
 	}
 	acc
 });
 
 lib_construct!(lib_fn_sub, Environment, |stack, _env| {
-	let mut acc = Value::None;
+	let mut acc = Tagged::None;
 	loop {
-		let n = stack().unwrap_or(Value::None);
-		if matches!(n, Value::None) {
+		let n = stack().unwrap_or(Tagged::None);
+		if matches!(n, Tagged::None) {
 			break;
 		}
 		acc = match (acc, n) {
-			(Value::None, y) => y,
-			(Value::Int(x), Value::Int(y)) => Value::Int(x.wrapping_sub(y)),
-			(Value::Flt(x), Value::Flt(y)) => Value::Flt(x - y),
-			_ => Value::None,
+			(Tagged::None, y) => y,
+			(Tagged::Int(x), Tagged::Int(y)) => Tagged::Int(x.wrapping_sub(y)),
+			(Tagged::Flt(x), Tagged::Flt(y)) => Tagged::Flt(x - y),
+			_ => Tagged::None,
 		}
 	}
 	acc
 });
 
 lib_construct!(lib_fn_mul, Environment, |stack, _env| {
-	let mut acc = Value::None;
+	let mut acc = Tagged::None;
 	loop {
-		let n = stack().unwrap_or(Value::None);
-		if matches!(n, Value::None) {
+		let n = stack().unwrap_or(Tagged::None);
+		if matches!(n, Tagged::None) {
 			break;
 		}
 		acc = match (acc, n) {
-			(Value::None, y) => y,
-			(Value::Int(x), Value::Int(y)) => Value::Int(x.wrapping_mul(y)),
-			(Value::Flt(x), Value::Flt(y)) => Value::Flt(x * y),
-			_ => Value::None,
+			(Tagged::None, y) => y,
+			(Tagged::Int(x), Tagged::Int(y)) => Tagged::Int(x.wrapping_mul(y)),
+			(Tagged::Flt(x), Tagged::Flt(y)) => Tagged::Flt(x * y),
+			_ => Tagged::None,
 		}
 	}
 	acc
 });
 
 lib_construct!(lib_fn_div, Environment, |stack, _env| {
-	let mut acc = Value::None;
+	let mut acc = Tagged::None;
 	loop {
-		let n = stack().unwrap_or(Value::None);
-		if matches!(n, Value::None) {
+		let n = stack().unwrap_or(Tagged::None);
+		if matches!(n, Tagged::None) {
 			break;
 		}
 		acc = match (acc, n) {
-			(Value::None, y) => y,
-			(Value::Int(x), Value::Int(y)) => Value::Int(x.wrapping_div(y)),
-			(Value::Flt(x), Value::Flt(y)) => Value::Flt(x / y),
-			_ => Value::None,
+			(Tagged::None, y) => y,
+			(Tagged::Int(x), Tagged::Int(y)) => Tagged::Int(x.wrapping_div(y)),
+			(Tagged::Flt(x), Tagged::Flt(y)) => Tagged::Flt(x / y),
+			_ => Tagged::None,
 		}
 	}
 	acc
@@ -251,46 +251,46 @@ lib_construct!(lib_fn_div, Environment, |stack, _env| {
 
 lib_construct!(lib_fn_rem, Environment, |stack, _env| {
 	let Some(left) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	let Some(right) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	match (left, right) {
-		(Value::Int(x), Value::Int(y)) => Value::Int(x % y),
-		(Value::Flt(x), Value::Flt(y)) => Value::Flt(x % y),
-		_ => Value::None,
+		(Tagged::Int(x), Tagged::Int(y)) => Tagged::Int(x % y),
+		(Tagged::Flt(x), Tagged::Flt(y)) => Tagged::Flt(x % y),
+		_ => Tagged::None,
 	}
 });
 
 lib_construct!(lib_fn_pow, Environment, |stack, _env| {
 	let Some(left) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	let Some(right) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	match (left, right) {
-		(Value::Int(x), Value::Int(y)) => Value::Int(x.pow(y.cast_unsigned())),
-		(Value::Flt(x), Value::Flt(y)) => Value::Flt(x.powf(y)),
-		_ => Value::None,
+		(Tagged::Int(x), Tagged::Int(y)) => Tagged::Int(x.pow(y.cast_unsigned())),
+		(Tagged::Flt(x), Tagged::Flt(y)) => Tagged::Flt(x.powf(y)),
+		_ => Tagged::None,
 	}
 });
 
 lib_construct!(lib_fn_cat, Environment, |stack, _env| {
-	let mut acc = Value::None;
+	let mut acc = Tagged::None;
 	loop {
-		let n = stack().unwrap_or(Value::None);
-		if matches!(n, Value::None) {
+		let n = stack().unwrap_or(Tagged::None);
+		if matches!(n, Tagged::None) {
 			break;
 		}
 		acc = match (acc, n) {
-			(Value::None, y) => y,
-			(Value::Str(mut x), Value::Str(y)) => {
-				x.push_str(&y);
-				Value::Str(x)
-			},
-			_ => Value::None,
+			(Tagged::None, y) => y,
+			// (Tagged::Str(mut x), Tagged::Str(y)) => {
+			// 	x.push_str(&y);
+			// 	Tagged::Str(x)
+			// },
+			_ => Tagged::None,
 		}
 	}
 	acc
@@ -298,124 +298,125 @@ lib_construct!(lib_fn_cat, Environment, |stack, _env| {
 
 lib_construct!(lib_fn_sin, Environment, |stack, _env| {
 	let Some(x) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	match x {
-		Value::Flt(x) => Value::Flt(x.sin()),
-		_ => Value::None,
+		Tagged::Flt(x) => Tagged::Flt(x.sin()),
+		_ => Tagged::None,
 	}
 });
 
 lib_construct!(lib_fn_asin, Environment, |stack, _env| {
 	let Some(x) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	match x {
-		Value::Flt(x) => Value::Flt(x.asin()),
-		_ => Value::None,
+		Tagged::Flt(x) => Tagged::Flt(x.asin()),
+		_ => Tagged::None,
 	}
 });
 
 lib_construct!(lib_fn_cos, Environment, |stack, _env| {
 	let Some(x) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	match x {
-		Value::Flt(x) => Value::Flt(x.cos()),
-		_ => Value::None,
+		Tagged::Flt(x) => Tagged::Flt(x.cos()),
+		_ => Tagged::None,
 	}
 });
 
 lib_construct!(lib_fn_acos, Environment, |stack, _env| {
 	let Some(x) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	match x {
-		Value::Flt(x) => Value::Flt(x.acos()),
-		_ => Value::None,
+		Tagged::Flt(x) => Tagged::Flt(x.acos()),
+		_ => Tagged::None,
 	}
 });
 
 lib_construct!(lib_fn_tan, Environment, |stack, _env| {
 	let Some(x) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	match x {
-		Value::Flt(x) => Value::Flt(x.tan()),
-		_ => Value::None,
+		Tagged::Flt(x) => Tagged::Flt(x.tan()),
+		_ => Tagged::None,
 	}
 });
 
 lib_construct!(lib_fn_atan, Environment, |stack, _env| {
 	let Some(x) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	match x {
-		Value::Flt(x) => Value::Flt(x.atan()),
-		_ => Value::None,
+		Tagged::Flt(x) => Tagged::Flt(x.atan()),
+		_ => Tagged::None,
 	}
 });
 
 lib_construct!(lib_fn_atan2, Environment, |stack, _env| {
 	let Some(x) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	let Some(y) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	match (x, y) {
-		(Value::Flt(x), Value::Flt(y)) => Value::Flt(x.atan2(y)),
-		_ => Value::None,
+		(Tagged::Flt(x), Tagged::Flt(y)) => Tagged::Flt(x.atan2(y)),
+		_ => Tagged::None,
 	}
 });
 
 lib_construct!(lib_fn_clamp, Environment, |stack, _env| {
 	let Some(x) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	let Some(y) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	let Some(z) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	match (x, y, z) {
-		(Value::Flt(x), Value::None, Value::Flt(z)) => Value::Flt(x.max(z)),
-		(Value::Flt(x), Value::Flt(y), Value::None) => Value::Flt(x.min(y)),
-		(Value::Flt(x), Value::Flt(y), Value::Flt(z)) => Value::Flt(x.min(y).max(z)),
-		(Value::Int(x), Value::None, Value::Int(z)) => Value::Int(x.max(z)),
-		(Value::Int(x), Value::Int(y), Value::None) => Value::Int(x.min(y)),
-		(Value::Int(x), Value::Int(y), Value::Int(z)) => Value::Int(x.min(y).max(z)),
-		_ => Value::None,
+		(Tagged::Flt(x), Tagged::None, Tagged::Flt(z)) => Tagged::Flt(x.max(z)),
+		(Tagged::Flt(x), Tagged::Flt(y), Tagged::None) => Tagged::Flt(x.min(y)),
+		(Tagged::Flt(x), Tagged::Flt(y), Tagged::Flt(z)) => Tagged::Flt(x.min(y).max(z)),
+		(Tagged::Int(x), Tagged::None, Tagged::Int(z)) => Tagged::Int(x.max(z)),
+		(Tagged::Int(x), Tagged::Int(y), Tagged::None) => Tagged::Int(x.min(y)),
+		(Tagged::Int(x), Tagged::Int(y), Tagged::Int(z)) => Tagged::Int(x.min(y).max(z)),
+		_ => Tagged::None,
 	}
 });
 
 lib_construct!(lib_fn_abs, Environment, |stack, _env| {
 	let Some(x) = stack() else {
-		return Value::None;
+		return Tagged::None;
 	};
 	match x {
-		Value::Int(x) => Value::Int(x.abs()),
-		Value::Flt(x) => Value::Flt(x.abs()),
-		_ => Value::None,
+		Tagged::Int(x) => Tagged::Int(x.abs()),
+		Tagged::Flt(x) => Tagged::Flt(x.abs()),
+		_ => Tagged::None,
 	}
 });
 
 lib_construct!(lib_fn_list, Environment, |stack, _env| {
 	let mut vec = vec![];
-	while let Some(value) = stack() {
-		vec.push(value);
+	while let Some(Tagged) = stack() {
+		vec.push(Tagged);
 	}
-	Value::List(vec)
+	// Tagged::List(vec)
+	todo!("unimplemented")
 });
 
 lib_construct!(lib_fn_pi, Environment, |_stack, _env| {
-	Value::Flt(core::f32::consts::PI)
+	Tagged::Flt(core::f64::consts::PI)
 });
 
 #[cfg(test)]
 mod test {
-    use crate::{library::{Environment, base}, types::Value};
+    use crate::{library::{Environment, base}, types::Tagged};
 
 	struct Env {}
 
@@ -423,7 +424,7 @@ mod test {
 
 	const ENV: Env = Env {};
 
-	fn stack(mut stack: Vec<Value>) -> impl FnMut() -> Option<Value> {
+	fn stack(mut stack: Vec<Tagged>) -> impl FnMut() -> Option<Tagged> {
 		move || {
 			stack.pop()
 		}
@@ -431,18 +432,17 @@ mod test {
 
 	#[test]
 	fn test_fn_int() {
-		assert_eq!(base::lib_fn_int(&mut stack(vec![Value::Int(2)]), &ENV), Value::Int(2));
-		assert_eq!(base::lib_fn_int(&mut stack(vec![Value::Flt(2.5)]), &ENV), Value::Int(2));
-		assert_eq!(base::lib_fn_int(&mut stack(vec![Value::None]), &ENV), Value::Int(0));
-		assert_eq!(base::lib_fn_int(&mut stack(vec![]), &ENV), Value::Int(0));
+		assert_eq!(base::lib_fn_int(&mut stack(vec![Tagged::Int(2)]), &ENV), Tagged::Int(2));
+		assert_eq!(base::lib_fn_int(&mut stack(vec![Tagged::Flt(2.5)]), &ENV), Tagged::Int(2));
+		assert_eq!(base::lib_fn_int(&mut stack(vec![Tagged::None]), &ENV), Tagged::Int(0));
+		assert_eq!(base::lib_fn_int(&mut stack(vec![]), &ENV), Tagged::Int(0));
 	}
 
 	#[test]
 	fn test_fn_flt() {
-		assert_eq!(base::lib_fn_flt(&mut stack(vec![Value::Flt(2.5)]), &ENV), Value::Flt(2.5));
-		assert_eq!(base::lib_fn_flt(&mut stack(vec![Value::Int(2)]), &ENV), Value::Flt(2.0));
-		assert_eq!(base::lib_fn_flt(&mut stack(vec![Value::None]), &ENV), Value::Flt(0.0));
-		assert_eq!(base::lib_fn_flt(&mut stack(vec![]), &ENV), Value::Flt(0.0));
+		assert_eq!(base::lib_fn_flt(&mut stack(vec![Tagged::Flt(2.5)]), &ENV), Tagged::Flt(2.5));
+		assert_eq!(base::lib_fn_flt(&mut stack(vec![Tagged::Int(2)]), &ENV), Tagged::Flt(2.0));
+		assert_eq!(base::lib_fn_flt(&mut stack(vec![Tagged::None]), &ENV), Tagged::Flt(0.0));
+		assert_eq!(base::lib_fn_flt(&mut stack(vec![]), &ENV), Tagged::Flt(0.0));
 	}
 }
-

@@ -5,58 +5,58 @@ pub mod ops {
 	pub const NOP: u8 = 0x00;
 	/// consume top value in stack
 	pub const POP: u8 = 0x01;
-	/// consume 
+	/// consume
 	pub const GET: u8 = 0x02;
 	pub const SET: u8 = 0x03;
 
 	pub const SWAP: u8 = 0x04;
-	
+
 	/// - operand
 	///     - `target`: `[u8; 4]`
 	/// - consume
 	///     1. `condition`
-	/// 
+	///
 	/// jump to an address.
-	/// 
+	///
 	/// - if `condition` is a `Value::Int`
 	///     - if it is `!= 0`, then
 	///       this does nothing.
 	///     - else, this sets the `pc` to the
 	///       address in `target`.
 	/// - else, this traps.
-	/// 
+	///
 	pub const JUMP: u8 = 0x05;
-	
+
 	/// - operand
 	///     - `arg_count`: `[u8; 1]`
 	/// - consume
 	///     1. `arg`
-	/// 
+	///
 	/// attempt to call `arg` as a function.
 	pub const CALL: u8 = 0x06;
-	
+
 	/// - operand
 	///     - `x`: `[u8; 4]`
-	/// 
+	///
 	/// pushes `x` onto the stack as a `Value::Int`
 	pub const LIT_INT: u8 = 0x10;
 
 	/// - operand
 	///     - `x`: `[u8; 4]`
-	/// 
+	///
 	/// pushes `x` onto the stack as a `Value::Flt`
 	pub const LIT_FLT: u8 = 0x11;
 
 	/// - operand
 	///     - `x`: `u16`
 	///     - `y`: `[u8; x]`
-	/// 
+	///
 	/// pushes `y` onto the stack as a `Value::Str`
 	pub const LIT_STR: u8 = 0x12;
 
 	/// pushes a `Value::None` onto the stack
 	pub const LIT_NONE: u8 = 0x13;
-	
+
 	/// pushes a `Value::Bool` onto the stack
 	pub const LIT_TRUE: u8 = 0x14;
 
@@ -118,7 +118,7 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 
 	fn block(&mut self, bin: &mut Vec<u8>) -> Result<(), String> {
 		self.scope_depth += 1;
-		
+
 		while !self.at_end() {
 			if self.check(&[TokenKind::RBrace]).is_some() {
 				break;
@@ -165,7 +165,7 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 			bin.push(ops::POP);
 			self.env.pop();
 		}
-		
+
 		Ok(())
 	}
 
@@ -173,7 +173,7 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 		self.primary(bin)?;
 
 		let mut count = 0;
-		
+
 		while !self.at_end() {
 			if self.check(&[TokenKind::RParen]).is_some() {
 				break;
@@ -270,7 +270,7 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 		}
 
 		if let Some(x) = self.check(&[TokenKind::Flt]) {
-			let a = x.src().parse::<f32>().map_err(|_| "number parse error".to_string())?;
+			let a = x.src().parse::<f64>().map_err(|_| "number parse error".to_string())?;
 			bin.push(ops::LIT_FLT);
 			bin.extend_from_slice(&a.to_be_bytes());
 			return Ok(());
@@ -281,7 +281,7 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 				.strip_prefix('"')
 				.and_then(|x| x.strip_suffix('"'))
 				.ok_or_else(|| "missing end '\"'".to_string())?;
-			
+
 			let b: u16 = a.len()
 				.try_into()
 				.map_err(|_| "string may not be longer than 65536 bytes".to_string())?;
@@ -326,4 +326,3 @@ impl<'a, I: Iterator<Item = Token<'a>>> Compile<'a, I> {
 		Err(format!("unexpected token: {:?}", self.tokens.peek()))
 	}
 }
-

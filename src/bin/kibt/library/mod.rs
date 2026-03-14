@@ -8,7 +8,7 @@ pub mod draw;
 #[macro_export]
 macro_rules! lib_construct {
 	($name:ident, $env:ident, |$left:ident, $right:ident| $block:block) => {
-		pub fn $name<E: $env>($left: &mut dyn FnMut() -> Option<Value>, $right: &E) -> Value $block
+		pub fn $name<E: $env>($left: &mut dyn FnMut() -> Option<$crate::types::Tagged>, $right: &E) -> $crate::types::Tagged $block
 	};
 }
 
@@ -81,7 +81,7 @@ pub fn lib_draw<'a, E: draw::EnvironmentDraw>() -> crate::types::Library<'a, E> 
 		("atan2", base::lib_fn_atan2),
 		("cat", base::lib_fn_cat),
 		("pi", base::lib_fn_pi),
-	
+
 		("uv_x", draw::lib_fn_uv_x),
 		("uv_y", draw::lib_fn_uv_y),
 		("px_x", draw::lib_fn_px_x),
@@ -93,4 +93,3 @@ pub fn lib_draw<'a, E: draw::EnvironmentDraw>() -> crate::types::Library<'a, E> 
 		("b", draw::lib_fn_sample_b),
 	]
 }
-

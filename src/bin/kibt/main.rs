@@ -65,7 +65,7 @@ const RULES: &[args::Rule<Config>] = &[
 		};
 
 		c.size = (x, y);
-		
+
 		Ok(())
 	}),
 ];
@@ -163,7 +163,7 @@ fn main() {
 			let lib = crate::library::lib_standalone();
 
 			let tokens = crate::token::Tokenize::new(&src);
-	
+
 			let bin = crate::compile::Compile::new(tokens, lib).parse().unwrap();
 
 			let mut vm = crate::interpret::Interpret::new(&bin, lib, &env);
@@ -171,24 +171,24 @@ fn main() {
 				vm.tick();
 			}
 
-			let out = vm.pop().unwrap_or(crate::types::Value::None);
+			let out = vm.pop().map(|x| x.get_tagged()).unwrap_or(crate::types::Tagged::None);
 
-			println!("{}", out);
+			println!("{:?}", out);
 		}
 	}
 	else if mode == 1 {
 		#[derive(Debug)]
 		struct Env<'a> {
-			uv: (f32, f32),
+			uv: (f64, f64),
 			px: (u32, u32),
 			size: (u32, u32),
-			canvas: &'a [(f32, f32, f32)],
+			canvas: &'a [(f64, f64, f64)],
 		}
 
 		impl<'a> crate::library::Environment for Env<'a> {}
 
 		impl<'a> crate::library::draw::EnvironmentDraw for Env<'a> {
-			fn uv(&self) -> (f32, f32) {
+			fn uv(&self) -> (f64, f64) {
 				self.uv
 			}
 
@@ -200,17 +200,17 @@ fn main() {
 				self.size
 			}
 
-			fn sample(&self, x: f32, y: f32) -> (f32, f32, f32) {
+			fn sample(&self, x: f64, y: f64) -> (f64, f64, f64) {
 				let size = self.size();
-				let rx = (x.clamp(0.0, 1.0f32.next_down()) * size.0 as f32) as u32;
-				let ry = (y.clamp(0.0, 1.0f32.next_down()) * size.1 as f32) as u32;
+				let rx = (x.clamp(0.0, 1.0f64.next_down()) * size.0 as f64) as u32;
+				let ry = (y.clamp(0.0, 1.0f64.next_down()) * size.1 as f64) as u32;
 				let idx = rx + ry * size.0;
 				self.canvas[idx as usize]
 			}
 		}
 
-		let mut canvas = vec![(0.0f32, 0.0f32, 0.0f32); (config.size.0 * config.size.1) as usize];
-		
+		let mut canvas = vec![(0.0f64, 0.0f64, 0.0f64); (config.size.0 * config.size.1) as usize];
+
 		for src in value {
 			let lib = crate::library::lib_draw();
 			let working_canvas = canvas.clone();
@@ -222,7 +222,7 @@ fn main() {
 			for (i, poke) in canvas.iter_mut().enumerate() {
 				let px = (i as u32 % config.size.0, i as u32 / config.size.0);
 				let env = Env {
-					uv: (px.0 as f32 / config.size.0 as f32, px.1 as f32 / config.size.1 as f32),
+					uv: (px.0 as f64 / config.size.0 as f64, px.1 as f64 / config.size.1 as f64),
 					px: (px.0, px.1),
 					size: (config.size.0, config.size.1),
 					canvas: &working_canvas,
@@ -233,24 +233,25 @@ fn main() {
 					vm.tick();
 				}
 
-				let out = vm.pop().unwrap_or(crate::types::Value::None);
+				let out = vm.pop().map(|x| x.get_tagged()).unwrap_or(crate::types::Tagged::None);
 				let map = |x| match x {
-					crate::types::Value::Int(x) => x.clamp(0, 255) as f32 / 255.0,
-					crate::types::Value::Flt(x) => x.clamp(0.0, 1.0),
+					crate::types::Tagged::Int(x) => x.clamp(0, 255) as f64 / 255.0,
+					crate::types::Tagged::Flt(x) => x.clamp(0.0, 1.0),
 					_ => 0.0,
 				};
 
 				let color = match out {
-					crate::types::Value::List(mut vec) => {
-						if vec.len() != 3 {
-							(0.0, 0.0, 0.0)
-						} else {
-							let b = vec.pop().unwrap();
-							let g = vec.pop().unwrap();
-							let r = vec.pop().unwrap();
-							(map(r), map(g), map(b))
-						}
-					}
+					// crate::types::Tagged::List(mut vec) => {
+					// 	// if vec.len() != 3 {
+					// 	// 	(0.0, 0.0, 0.0)
+					// 	// } else {
+					// 	// 	let b = vec.pop().unwrap();
+					// 	// 	let g = vec.pop().unwrap();
+					// 	// 	let r = vec.pop().unwrap();
+					// 	// 	(map(r), map(g), map(b))
+					// 	// }
+					// 	(0.0, 0.0, 0.0)
+					// }
 					_ => {
 						let x = map(out);
 						(x, x, x)
@@ -326,4 +327,3 @@ fn main() {
 		).unwrap();
 	}
 }
-

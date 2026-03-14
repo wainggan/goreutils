@@ -1,4 +1,4 @@
-use crate::{compile::ops, types::{Library, NativeFnIndex, Value}};
+use crate::{compile::ops, types::{Library, NativeFnIndex, Tagged, Value}};
 
 pub struct Interpret<'a, 'b, 'c: 'b, Env> {
 	pc: usize,
@@ -14,7 +14,7 @@ impl<'a, 'b, 'c, Env> Interpret<'a, 'b, 'c, Env> {
 			.iter()
 			.enumerate()
 			.map(|(i, _)|
-				Value::NativeFn(NativeFnIndex(i as u32))
+				Value::new_tagged(Tagged::NativeFn(NativeFnIndex(i as u32)))
 			)
 			.collect();
 		Self {
@@ -48,9 +48,9 @@ impl<'a, 'b, 'c, Env> Interpret<'a, 'b, 'c, Env> {
 	fn word_i32(&mut self) -> i32 {
 		i32::from_be_bytes(self.next::<4>().unwrap())
 	}
-	
-	fn word_f32(&mut self) -> f32 {
-		f32::from_be_bytes(self.next::<4>().unwrap())
+
+	fn word_f64(&mut self) -> f64 {
+		f64::from_be_bytes(self.next::<8>().unwrap())
 	}
 
 	fn slice(&mut self, len: usize) -> &[u8] {
@@ -96,8 +96,8 @@ impl<'a, 'b, 'c, Env> Interpret<'a, 'b, 'c, Env> {
 
 			ops::JUMP => {
 				let offset = self.word_i32().cast_unsigned();
-				let condition = self.stack.pop();
-				let Some(Value::Bool(value)) = condition else {
+				let condition = self.stack.pop().map(|x| x.get_tagged());
+				let Some(Tagged::Bool(value)) = condition else {
 					panic!();
 				};
 				if value {
@@ -107,46 +107,47 @@ impl<'a, 'b, 'c, Env> Interpret<'a, 'b, 'c, Env> {
 
 			ops::LIT_INT => {
 				let data = self.word_i32();
-				self.stack.push(Value::Int(data));
+				self.stack.push(Value::new_tagged(Tagged::Int(data)));
 			}
 
 			ops::LIT_FLT => {
-				let data = self.word_f32();
-				self.stack.push(Value::Flt(data));
+				let data = self.word_f64();
+				self.stack.push(Value::new_tagged(Tagged::Flt(data)));
 			}
 
 			ops::LIT_STR => {
-				let len = self.word_u16();
-				let data = self.slice(len.into());
-				let s = str::from_utf8(data)
-					.unwrap()
-					.to_string();
-				self.stack.push(Value::Str(s));
+				todo!();
+				// let len = self.word_u16();
+				// let data = self.slice(len.into());
+				// let s = str::from_utf8(data)
+				// 	.unwrap()
+				// 	.to_string();
+				// self.stack.push(Value::Str(s));
 			}
 
 			ops::LIT_NONE => {
-				self.stack.push(Value::None);
+				self.stack.push(Value::new_tagged(Tagged::None));
 			}
 
 			ops::LIT_TRUE => {
-				self.stack.push(Value::Bool(true));
+				self.stack.push(Value::new_tagged(Tagged::Bool(true)));
 			}
 
 			ops::LIT_FALSE => {
-				self.stack.push(Value::Bool(false));
+				self.stack.push(Value::new_tagged(Tagged::Bool(false)));
 			}
 
 			ops::CALL => {
-				let cmd = self.stack.pop().unwrap();
+				let cmd = self.stack.pop().unwrap().get_tagged();
 				let mut count = self.byte();
 				match cmd {
-					Value::NativeFn(x) => {
+					Tagged::NativeFn(x) => {
 						let y = self.natives[x.0 as usize].1;
 
 						let out = y(&mut || {
 							if count > 0 {
 								count -= 1;
-								Some(self.stack.remove(self.stack.len() - count as usize - 1))
+								Some(self.stack.remove(self.stack.len() - count as usize - 1).get_tagged())
 							}
 							else {
 								None
@@ -158,7 +159,7 @@ impl<'a, 'b, 'c, Env> Interpret<'a, 'b, 'c, Env> {
 							count -= 1;
 						}
 
-						self.stack.push(out);
+						self.stack.push(Value::new_tagged(out));
 					}
 					_ => {
 						println!("{:?} {:?}", cmd, self.stack);
@@ -176,12 +177,12 @@ impl<'a, 'b, 'c, Env> Interpret<'a, 'b, 'c, Env> {
 
 #[cfg(test)]
 mod test {
-    use crate::{compile::{Compile, ops}, interpret::Interpret, token::Tokenize, types::Value};
+    use crate::{compile::{Compile, ops}, interpret::Interpret, token::Tokenize, types::{Tagged, Value}};
 
 	#[test]
 	fn test_interpret_0() {
 		let src = "{1 0.2}";
-		
+
 		let tokens = Tokenize::new(src).collect::<Vec<_>>();
 		println!("{:?}", tokens);
 
@@ -194,24 +195,24 @@ mod test {
 			0, 0, 0, 1,
 			ops::POP,
 			ops::LIT_FLT,
-			62, 76, 204, 205,
+			63, 201, 153, 153, 153, 153, 153, 154,
 		]);
 
 		let mut interpret = Interpret::new(&bin, &globals, &());
 
 		_ = interpret.tick();
-		assert_eq!(interpret.stack, vec![Value::Int(1)]);
+		assert_eq!(interpret.stack, vec![Value::new_tagged(Tagged::Int(1))]);
 		_ = interpret.tick();
 		assert_eq!(interpret.stack, vec![]);
 		_ = interpret.tick();
-		assert_eq!(interpret.stack, vec![Value::Flt(0.2)]);
+		assert_eq!(interpret.stack, vec![Value::new_tagged(Tagged::Flt(0.2))]);
 		_ = interpret.tick();
 	}
 
 	#[test]
 	fn test_interpret_1() {
 		let src = "{ let a 1 let b 2 a b }";
-		
+
 		let tokens = Tokenize::new(src).collect::<Vec<_>>();
 		println!("{:?}", tokens);
 
@@ -229,7 +230,7 @@ mod test {
 			0, 0, 0, 2,
 			ops::LIT_NONE,
 			ops::POP,
-			
+
 			ops::GET,
 			0,
 			ops::POP,
@@ -248,26 +249,25 @@ mod test {
 		_ = interpret.tick();
 		_ = interpret.tick();
 		_ = interpret.tick();
-		assert_eq!(interpret.stack, vec![Value::Int(1)]);
+		assert_eq!(interpret.stack, vec![Value::new_tagged(Tagged::Int(1))]);
 		_ = interpret.tick();
 		_ = interpret.tick();
 		_ = interpret.tick();
-		assert_eq!(interpret.stack, vec![Value::Int(1), Value::Int(2)]);
+		assert_eq!(interpret.stack, vec![Value::new_tagged(Tagged::Int(1)), Value::new_tagged(Tagged::Int(2))]);
 		_ = interpret.tick();
-		assert_eq!(interpret.stack, vec![Value::Int(1), Value::Int(2), Value::Int(1)]);
+		assert_eq!(interpret.stack, vec![Value::new_tagged(Tagged::Int(1)), Value::new_tagged(Tagged::Int(2)), Value::new_tagged(Tagged::Int(1))]);
 		_ = interpret.tick();
-		assert_eq!(interpret.stack, vec![Value::Int(1), Value::Int(2)]);
+		assert_eq!(interpret.stack, vec![Value::new_tagged(Tagged::Int(1)), Value::new_tagged(Tagged::Int(2))]);
 		_ = interpret.tick();
-		assert_eq!(interpret.stack, vec![Value::Int(1), Value::Int(2), Value::Int(2)]);
+		assert_eq!(interpret.stack, vec![Value::new_tagged(Tagged::Int(1)), Value::new_tagged(Tagged::Int(2)), Value::new_tagged(Tagged::Int(2))]);
 		_ = interpret.tick();
-		assert_eq!(interpret.stack, vec![Value::Int(1), Value::Int(2), Value::Int(2)]);
+		assert_eq!(interpret.stack, vec![Value::new_tagged(Tagged::Int(1)), Value::new_tagged(Tagged::Int(2)), Value::new_tagged(Tagged::Int(2))]);
 		_ = interpret.tick();
-		assert_eq!(interpret.stack, vec![Value::Int(1), Value::Int(2)]);
+		assert_eq!(interpret.stack, vec![Value::new_tagged(Tagged::Int(1)), Value::new_tagged(Tagged::Int(2))]);
 		_ = interpret.tick();
-		assert_eq!(interpret.stack, vec![Value::Int(2), Value::Int(1)]);
+		assert_eq!(interpret.stack, vec![Value::new_tagged(Tagged::Int(2)), Value::new_tagged(Tagged::Int(1))]);
 		_ = interpret.tick();
-		assert_eq!(interpret.stack, vec![Value::Int(2)]);
+		assert_eq!(interpret.stack, vec![Value::new_tagged(Tagged::Int(2))]);
 		_ = interpret.tick();
 	}
 }
-

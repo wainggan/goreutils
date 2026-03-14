@@ -1,72 +1,72 @@
-use crate::{lib_construct, library::Environment, types::Value};
+use crate::{lib_construct, library::Environment, types::Tagged};
 
 pub trait EnvironmentDraw: Environment {
-	fn uv(&self) -> (f32, f32);
+	fn uv(&self) -> (f64, f64);
 	fn px(&self) -> (u32, u32);
 	fn size(&self) -> (u32, u32);
-	fn sample(&self, x: f32, y: f32) -> (f32, f32, f32);
+	fn sample(&self, x: f64, y: f64) -> (f64, f64, f64);
 }
 
 lib_construct!(lib_fn_uv_x, EnvironmentDraw, |_stack, env| {
-	Value::Flt(env.uv().0)
+	Tagged::Flt(env.uv().0)
 });
 
 lib_construct!(lib_fn_uv_y, EnvironmentDraw, |_stack, env| {
-	Value::Flt(env.uv().1)
+	Tagged::Flt(env.uv().1)
 });
 
 lib_construct!(lib_fn_px_x, EnvironmentDraw, |_stack, env| {
-	Value::Int(env.px().0 as i32)
+	Tagged::Int(env.px().0 as i32)
 });
 
 lib_construct!(lib_fn_px_y, EnvironmentDraw, |_stack, env| {
-	Value::Int(env.px().1 as i32)
+	Tagged::Int(env.px().1 as i32)
 });
 
 lib_construct!(lib_fn_width, EnvironmentDraw, |_stack, env| {
-	Value::Int(env.size().0 as i32)
+	Tagged::Int(env.size().0 as i32)
 });
 
 lib_construct!(lib_fn_height, EnvironmentDraw, |_stack, env| {
-	Value::Int(env.size().1 as i32)
+	Tagged::Int(env.size().1 as i32)
 });
 
 lib_construct!(lib_fn_sample_r, EnvironmentDraw, |stack, env| {
-	let pos_x = stack().unwrap_or_else(|| Value::Flt(env.uv().0));
-	let pos_y = stack().unwrap_or_else(|| Value::Flt(env.uv().1));
+	let pos_x = stack().unwrap_or_else(|| Tagged::Flt(env.uv().0));
+	let pos_y = stack().unwrap_or_else(|| Tagged::Flt(env.uv().1));
 	let col = match (pos_x, pos_y) {
-		(Value::Flt(x), Value::Flt(y)) => env.sample(x, y),
-		_ => return Value::None,
+		(Tagged::Flt(x), Tagged::Flt(y)) => env.sample(x, y),
+		_ => return Tagged::None,
 	};
-	Value::Flt(col.0)
+	Tagged::Flt(col.0)
 });
 
 lib_construct!(lib_fn_sample_g, EnvironmentDraw, |stack, env| {
-	let pos_x = stack().unwrap_or_else(|| Value::Flt(env.uv().0));
-	let pos_y = stack().unwrap_or_else(|| Value::Flt(env.uv().1));
+	let pos_x = stack().unwrap_or_else(|| Tagged::Flt(env.uv().0));
+	let pos_y = stack().unwrap_or_else(|| Tagged::Flt(env.uv().1));
 	let col = match (pos_x, pos_y) {
-		(Value::Flt(x), Value::Flt(y)) => env.sample(x, y),
-		_ => return Value::None,
+		(Tagged::Flt(x), Tagged::Flt(y)) => env.sample(x, y),
+		_ => return Tagged::None,
 	};
-	Value::Flt(col.1)
+	Tagged::Flt(col.1)
 });
 
 lib_construct!(lib_fn_sample_b, EnvironmentDraw, |stack, env| {
-	let pos_x = stack().unwrap_or_else(|| Value::Flt(env.uv().0));
-	let pos_y = stack().unwrap_or_else(|| Value::Flt(env.uv().1));
+	let pos_x = stack().unwrap_or_else(|| Tagged::Flt(env.uv().0));
+	let pos_y = stack().unwrap_or_else(|| Tagged::Flt(env.uv().1));
 	let col = match (pos_x, pos_y) {
-		(Value::Flt(x), Value::Flt(y)) => env.sample(x, y),
-		_ => return Value::None,
+		(Tagged::Flt(x), Tagged::Flt(y)) => env.sample(x, y),
+		_ => return Tagged::None,
 	};
-	Value::Flt(col.2)
+	Tagged::Flt(col.2)
 });
 
 #[cfg(test)]
 mod test {
-    use crate::{library::{Environment, draw}, types::Value};
+    use crate::{library::{Environment, draw}, types::Tagged};
 
 	struct Env {
-		uv: (f32, f32),
+		uv: (f64, f64),
 		px: (u32, u32),
 		size: (u32, u32),
 	}
@@ -74,7 +74,7 @@ mod test {
 	impl Environment for Env {}
 
 	impl draw::EnvironmentDraw for Env {
-		fn uv(&self) -> (f32, f32) {
+		fn uv(&self) -> (f64, f64) {
 			self.uv
 		}
 
@@ -86,7 +86,7 @@ mod test {
 			self.size
 		}
 
-		fn sample(&self, _x: f32, _y: f32) -> (f32, f32, f32) {
+		fn sample(&self, _x: f64, _y: f64) -> (f64, f64, f64) {
 			(0.0, 0.0, 0.0)
 		}
 	}
@@ -97,7 +97,7 @@ mod test {
 		size: (5, 6),
 	};
 
-	fn stack(mut stack: Vec<Value>) -> impl FnMut() -> Option<Value> {
+	fn stack(mut stack: Vec<Tagged>) -> impl FnMut() -> Option<Tagged> {
 		move || {
 			stack.pop()
 		}
@@ -105,33 +105,31 @@ mod test {
 
 	#[test]
 	fn test_fn_uv_x() {
-		assert_eq!(draw::lib_fn_uv_x(&mut stack(vec![]), &ENV), Value::Flt(1.0));
+		assert_eq!(draw::lib_fn_uv_x(&mut stack(vec![]), &ENV), Tagged::Flt(1.0));
 	}
 
 	#[test]
 	fn test_fn_uv_y() {
-		assert_eq!(draw::lib_fn_uv_y(&mut stack(vec![]), &ENV), Value::Flt(2.0));
+		assert_eq!(draw::lib_fn_uv_y(&mut stack(vec![]), &ENV), Tagged::Flt(2.0));
 	}
 
 	#[test]
 	fn test_fn_px_x() {
-		assert_eq!(draw::lib_fn_px_x(&mut stack(vec![]), &ENV), Value::Int(3));
+		assert_eq!(draw::lib_fn_px_x(&mut stack(vec![]), &ENV), Tagged::Int(3));
 	}
 
 	#[test]
 	fn test_fn_px_y() {
-		assert_eq!(draw::lib_fn_px_y(&mut stack(vec![]), &ENV), Value::Int(4));
+		assert_eq!(draw::lib_fn_px_y(&mut stack(vec![]), &ENV), Tagged::Int(4));
 	}
 
 	#[test]
 	fn test_fn_width() {
-		assert_eq!(draw::lib_fn_width(&mut stack(vec![]), &ENV), Value::Int(5));
+		assert_eq!(draw::lib_fn_width(&mut stack(vec![]), &ENV), Tagged::Int(5));
 	}
 
 	#[test]
 	fn test_fn_height() {
-		assert_eq!(draw::lib_fn_height(&mut stack(vec![]), &ENV), Value::Int(6));
+		assert_eq!(draw::lib_fn_height(&mut stack(vec![]), &ENV), Tagged::Int(6));
 	}
 }
-
-

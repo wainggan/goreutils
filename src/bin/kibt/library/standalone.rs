@@ -1,4 +1,4 @@
-use crate::{lib_construct, library::Environment, types::Value};
+use crate::{lib_construct, library::Environment, types::Tagged};
 
 pub trait EnvironmentStandalone: Environment {
 	fn stdout(&self, write: &mut dyn FnMut(&mut dyn std::fmt::Write));
@@ -6,14 +6,14 @@ pub trait EnvironmentStandalone: Environment {
 
 lib_construct!(lib_fn_print, EnvironmentStandalone, |stack, env| {
 	while let Some(value) = stack() {
-		env.stdout(&mut |f| _ = writeln!(f, "{}", value));
+		env.stdout(&mut |f| _ = writeln!(f, "{:?}", value));
 	}
-	Value::None
+	Tagged::None
 });
 
 #[cfg(test)]
 mod test {
-    use crate::{library::{Environment, standalone}, types::Value};
+    use crate::{library::{Environment, standalone}, types::Tagged};
 
 	struct Env<W: std::fmt::Write> {
 		writer: std::sync::RwLock<W>,
@@ -28,7 +28,7 @@ mod test {
 		}
 	}
 
-	fn stack(mut stack: Vec<Value>) -> impl FnMut() -> Option<Value> {
+	fn stack(mut stack: Vec<Tagged>) -> impl FnMut() -> Option<Tagged> {
 		move || {
 			stack.pop()
 		}
@@ -40,10 +40,9 @@ mod test {
 			writer: std::sync::RwLock::new(String::new()),
 		};
 
-		standalone::lib_fn_print(&mut stack(vec![Value::Int(0)]), &env);
+		standalone::lib_fn_print(&mut stack(vec![Tagged::Int(0)]), &env);
 
 		let s = env.writer.read().expect("poisoned!");
-		assert_eq!(s.as_str(), "0\n");
+		assert_eq!(s.as_str(), "Int(0)\n");
 	}
 }
-
